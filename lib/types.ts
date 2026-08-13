@@ -126,6 +126,30 @@ export type Flag = {
 export const CLAIM_WINDOW_MS = 6 * 60 * 60 * 1000;
 export const CLAIM_LIMIT_PER_WINDOW = 8;
 
+/**
+ * Días sin novedades tras los cuales una necesidad abierta deja de ser fiable.
+ *
+ * En un desastre la mayoría se resuelven por fuera de la plataforma —un vecino
+ * llegó con el agua, la familia se fue donde un pariente— y nadie vuelve a
+ * cerrarlas. Sin esta señal el mapa se llena de necesidades fantasma: el
+ * voluntario maneja dos horas hasta algo ya resuelto, y a la tercera vez deja
+ * de creer en lo que lee. Es la forma más probable de que la plataforma muera,
+ * y no aparece en las pruebas porque necesita que pase el tiempo.
+ *
+ * No se cierran solas. Igual que con las ráfagas de publicación: si la
+ * necesidad sigue viva, borrarla sería el peor error posible. Se marca para que
+ * un humano pregunte.
+ */
+export const STALE_DAYS = 7;
+
+/** Una necesidad abierta de la que no se sabe nada hace demasiado. */
+export function isStale(need: Need, now = Date.now()): boolean {
+  if (need.status !== "abierta") return false;
+  const desde = need.updatedAt ?? need.createdAt;
+  if (!desde) return false;
+  return now - desde > STALE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 export type GeoPoint = { lat: number; lng: number };
 
 export type Need = {

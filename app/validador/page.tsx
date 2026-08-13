@@ -7,13 +7,21 @@ import FirebaseGate from "@/components/FirebaseGate";
 import NeedCard from "@/components/NeedCard";
 import { authMessage, signInValidator, signOutValidator, useAuth } from "@/lib/auth";
 import { subscribeToFlags, subscribeToOpenNeeds } from "@/lib/needs";
-import { FLAG_LABEL, isClaimExpired, type Flag, type Need } from "@/lib/types";
+import {
+  FLAG_LABEL,
+  isClaimExpired,
+  isStale,
+  STALE_DAYS,
+  type Flag,
+  type Need,
+} from "@/lib/types";
 
 type Filter =
   | "denunciadas"
   | "por-confirmar"
   | "sin-verificar"
   | "vencidas"
+  | "sin-noticias"
   | "pendientes";
 
 const FILTER_LABEL: Record<Filter, string> = {
@@ -21,6 +29,7 @@ const FILTER_LABEL: Record<Filter, string> = {
   "por-confirmar": "Entregas por confirmar",
   "sin-verificar": "Sin verificar",
   vencidas: "Compromisos vencidos",
+  "sin-noticias": `Sin noticias +${STALE_DAYS} días`,
   pendientes: "Todas",
 };
 
@@ -172,6 +181,13 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       case "vencidas":
         // Compromisos caducados: alguien dijo que iba y no cerró el ciclo.
         return needs.filter((n) => n.status === "comprometida" && isClaimExpired(n));
+      case "sin-noticias":
+        // Abiertas que nadie ha tocado en más de una semana. Casi siempre se
+        // resolvieron por fuera y nadie las cerró; basta una llamada para
+        // saberlo. Las más viejas primero, que son las menos fiables.
+        return needs
+          .filter((n) => isStale(n))
+          .sort((a, b) => (a.updatedAt ?? 0) - (b.updatedAt ?? 0));
       default:
         return needs;
     }
@@ -182,6 +198,7 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       total: needs.length,
       denunciadas: needs.filter((n) => flagsByNeed.has(n.id)).length,
       porConfirmar: needs.filter((n) => n.status === "entregada").length,
+      sinNoticias: needs.filter((n) => isStale(n)).length,
     }),
     [needs, flagsByNeed],
   );
@@ -216,6 +233,7 @@ function Panel({ name, zone }: { name: string; zone: string }) {
           <Stat label="Pendientes" value={stats.total} />
           <Stat label="Denunciadas" value={stats.denunciadas} />
           <Stat label="Por confirmar" value={stats.porConfirmar} />
+          <Stat label="Sin noticias" value={stats.sinNoticias} />
         </div>
       </div>
 
@@ -225,6 +243,7 @@ function Panel({ name, zone }: { name: string; zone: string }) {
             "denunciadas",
             "por-confirmar",
             "sin-verificar",
+            "sin-noticias",
             "vencidas",
             "pendientes",
           ] as Filter[]
