@@ -16,6 +16,7 @@ import {
   MAX_REFERENCE,
 } from "@/lib/needs";
 import { SITE } from "@/lib/site";
+import { zoneLabel } from "@/lib/zones";
 import {
   CATEGORIES,
   CATEGORY_HINT,
@@ -141,8 +142,18 @@ function NecesitoFlow() {
     }
   }
 
-  if (step === 3 && createdId) {
-    return <Ticket id={createdId} queued={queued} code={recoveryCode} />;
+  if (step === 3 && createdId && category) {
+    return (
+      <Ticket
+        id={createdId}
+        queued={queued}
+        code={recoveryCode}
+        category={category}
+        description={description}
+        reference={reference}
+        point={location}
+      />
+    );
   }
 
   return (
@@ -409,15 +420,32 @@ function Ticket({
   id,
   queued,
   code,
+  category,
+  description,
+  reference,
+  point,
 }: {
   id: string;
   queued: boolean;
+  category: Category;
+  description: string;
+  reference: string;
+  point: GeoPoint | null;
   code: string;
 }) {
   const shown = useMemo(() => formatRecoveryCode(code), [code]);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const mensaje = `Reporté una necesidad en Ayuda Humanitaria.\nMi código de recuperación es ${shown}\nSirve para recuperar el reporte si pierdo el teléfono: ${SITE.url}/recuperar/`;
+
+  const enlace = `${SITE.url}/necesidad/?id=${id}`;
+  // Mismo formato que el de la ficha: quien lo recibe debe entender de qué se
+  // trata sin abrir nada, porque muchos leen WhatsApp con datos contados.
+  const mensajeNecesidad =
+    `${CATEGORY_LABEL[category]} en ${zoneLabel(point) ?? "zona afectada"}: ` +
+    `${description}\n${reference || ""}\n` +
+    `¿Puedes cubrirla o conoces a alguien? ${enlace}`;
 
   return (
     <main className="shell" id="main">
@@ -450,9 +478,18 @@ function Ticket({
           permite recuperar el reporte desde otro aparato.
         </p>
 
+        {/* Los dos envíos van separados y rotulados a propósito. El del código
+            es privado: quien lo tenga puede apropiarse del reporte desde
+            /recuperar/. El de la necesidad es público y se manda a grupos. Un
+            solo botón ambiguo aquí terminaría con códigos de recuperación
+            pegados en cadenas de WhatsApp. */}
         <div className="stack" style={{ gap: 10, width: "100%" }}>
+          <p className="meta">
+            <span className="strong">Solo para ti.</span> No lo mandes a grupos:
+            quien tenga este código puede tomar el control del reporte.
+          </p>
           <a
-            className="btn btn--primary"
+            className="btn"
             href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -475,9 +512,49 @@ function Ticket({
               }
             }}
           >
-            {copied ? "Código copiado" : "Compartir o copiar"}
+            {copied ? "Código copiado" : "Copiar el código"}
           </button>
         </div>
+
+        {/* Difundir es lo que hace que la necesidad encuentre a quien puede
+            cubrirla, y el momento de hacerlo es este: después ya se fue de la
+            pantalla. Estando sin señal no se ofrece, porque la necesidad aún no
+            llegó al servidor y el enlace le daría "no existe" a quien lo abra. */}
+        {!queued && (
+          <div className="stack" style={{ gap: 10, width: "100%" }}>
+            <hr className="hr" />
+            <p className="meta">
+              <span className="strong">Para difundir.</span> Cuantos más lo vean,
+              antes llega la ayuda. Este enlace no muestra tu teléfono.
+            </p>
+            <a
+              className="btn btn--primary"
+              href={`https://wa.me/?text=${encodeURIComponent(mensajeNecesidad)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Compartir mi necesidad
+            </a>
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => {
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: description, url: enlace });
+                  } else {
+                    await navigator.clipboard.writeText(enlace);
+                    setLinkCopied(true);
+                  }
+                } catch {
+                  /* el usuario canceló el diálogo */
+                }
+              }}
+            >
+              {linkCopied ? "Enlace copiado" : "Copiar el enlace"}
+            </button>
+          </div>
+        )}
       </section>
       <div className="spacer" />
       <div className="stack">
