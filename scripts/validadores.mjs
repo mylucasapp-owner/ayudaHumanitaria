@@ -12,9 +12,11 @@
  *   node scripts/validadores.mjs crear "Bomberos Quibdó" Chocó correo@x.org --con-clave
  *   node scripts/validadores.mjs revocar correo@ong.org
  *
- * Por defecto imprime un enlace de un solo uso para que el coordinador defina
- * su propia contraseña: así ninguna clave permanente viaja por un chat. Con
- * `--con-clave` se genera una contraseña, para quien no pueda abrir enlaces.
+ * Para una cuenta nueva imprime un enlace de un solo uso para que el
+ * coordinador defina su propia contraseña: así ninguna clave permanente viaja
+ * por un chat. Con `--con-clave` se genera una contraseña, para quien no pueda
+ * abrir enlaces. Si la cuenta ya existía no se toca su contraseña; `--nueva-clave`
+ * fuerza el enlace para quien la olvidó.
  */
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -104,7 +106,7 @@ async function uidPorCorreo(correo) {
   return r?.users?.[0]?.localId ?? null;
 }
 
-async function crear(nombre, zona, correo, conClave) {
+async function crear(nombre, zona, correo, conClave, nuevaClave) {
   if (!nombre || !zona || !correo) {
     console.error(
       'Uso: node scripts/validadores.mjs crear "Nombre" "Zona" correo@ong.org [--con-clave]',
@@ -117,6 +119,7 @@ async function crear(nombre, zona, correo, conClave) {
   const clave = randomBytes(12).toString("base64url");
 
   let uid = await uidPorCorreo(correo);
+  const existia = !!uid;
   if (uid) {
     console.log(`La cuenta ${correo} ya existía. Se reutiliza (uid ${uid}).`);
   } else {
@@ -148,7 +151,16 @@ async function crear(nombre, zona, correo, conClave) {
 
   console.log(`\nAcreditado: ${nombre} · zona ${zona}`);
 
-  if (conClave) {
+  // Reacreditar a alguien que ya tenía cuenta no debe tocarle la contraseña.
+  // Restituir un rol es una operación normal —se revocó por error, la persona
+  // volvió al terreno— y mandarle un enlace nuevo le diría que la suya dejó de
+  // servir, que es falso. Con --nueva-clave se pide el enlace a propósito.
+  if (existia && !conClave && !nuevaClave) {
+    console.log(
+      "\n  Su contraseña de siempre sigue sirviendo; no hay nada que enviarle." +
+        "\n  Si la olvidó, repite el comando con --nueva-clave.",
+    );
+  } else if (conClave) {
     console.log(
       `\n  Correo:     ${correo}` +
         `\n  Contraseña: ${clave}` +
@@ -216,17 +228,18 @@ async function revocar(correo) {
 
 const [accion, ...resto] = process.argv.slice(2);
 const conClave = resto.includes("--con-clave");
-const args = resto.filter((a) => a !== "--con-clave");
+const nuevaClave = resto.includes("--nueva-clave");
+const args = resto.filter((a) => !a.startsWith("--"));
 
 try {
   if (accion === "listar") await listar();
-  else if (accion === "crear") await crear(args[0], args[1], args[2], conClave);
+  else if (accion === "crear") await crear(args[0], args[1], args[2], conClave, nuevaClave);
   else if (accion === "revocar") await revocar(args[0]);
   else {
     console.log(
       "Acciones:\n" +
         "  listar\n" +
-        '  crear "Nombre" "Zona" correo@ong.org [--con-clave]\n' +
+        '  crear "Nombre" "Zona" correo@ong.org [--con-clave|--nueva-clave]\n' +
         "  revocar correo@ong.org",
     );
   }
