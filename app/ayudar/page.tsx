@@ -9,7 +9,7 @@ import FirebaseGate from "@/components/FirebaseGate";
 import NeedCard from "@/components/NeedCard";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, getCurrentPosition } from "@/lib/geo";
-import { ZONES, zoneOf } from "@/lib/zones";
+import { zoneById, zoneOf } from "@/lib/zones";
 import { subscribeToOpenNeeds } from "@/lib/needs";
 import {
   CATEGORIES,
@@ -50,13 +50,24 @@ function AyudarPage() {
   const [zone, setZone] = useState<string>("todas");
   const [locating, setLocating] = useState(false);
   const [geoMessage, setGeoMessage] = useState<string | null>(null);
+  // Zonas que han llegado a aparecer en el listado. Se acumulan en vez de
+  // recalcularse: al filtrar por una, la consulta ya solo devuelve esa, y unos
+  // chips que se borran al usarlos dejarían al voluntario sin forma de volver.
+  const [zonasVistas, setZonasVistas] = useState<string[]>([]);
 
   // La zona elegida se recuerda: un voluntario trabaja siempre en la suya y no
   // tiene por qué volver a filtrar cada vez que abre la app.
   useEffect(() => {
     try {
       const guardada = localStorage.getItem(ZONE_KEY);
-      if (guardada) setZone(guardada);
+      // Las zonas pasaron de tres focos a un departamento cada una. Una
+      // preferencia vieja ("cali") ya no existe y filtraría a cero: dejaría al
+      // voluntario ante una lista vacía sin nada que indique por qué.
+      if (guardada && (guardada === "todas" || guardada === "otra" || zoneById(guardada))) {
+        setZone(guardada);
+      } else if (guardada) {
+        localStorage.removeItem(ZONE_KEY);
+      }
     } catch {
       /* sin almacenamiento se arranca en "todas" */
     }
@@ -94,6 +105,11 @@ function AyudarPage() {
       (list) => {
         setNeeds(list);
         setLoading(false);
+        setZonasVistas((previas) => {
+          const union = new Set(previas);
+          for (const n of list) if (n.zone) union.add(n.zone);
+          return union.size === previas.length ? previas : [...union];
+        });
       },
       () => {
         setError("No se pudo cargar el listado. Revisa la conexión.");
@@ -102,6 +118,18 @@ function AyudarPage() {
       zone,
     );
   }, [user, zone]);
+
+  // Los chips salen de los datos, no de una lista fija: pintar los 32
+  // departamentos dejaría treinta botones vacíos y ninguno encontrable. Se
+  // incluye siempre el que está activo, para que al filtrar por una zona que
+  // acaba de vaciarse siga viéndose cuál está puesta.
+  const zonasConNecesidades = useMemo(() => {
+    const ids = new Set(zonasVistas);
+    if (zone !== "todas") ids.add(zone);
+    return [...ids]
+      .map((id) => zoneById(id) ?? { id, short: "Otra zona", label: "Otra zona" })
+      .sort((a, b) => a.short.localeCompare(b.short, "es"));
+  }, [zonasVistas, zone]);
 
   // La ubicación es opcional: sin ella la lista sigue sirviendo, solo que
   // ordenada por hora en vez de por cercanía.
@@ -193,7 +221,7 @@ function AyudarPage() {
         >
           Toda la región
         </button>
-        {ZONES.map((z) => (
+        {zonasConNecesidades.map((z) => (
           <button
             key={z.id}
             type="button"

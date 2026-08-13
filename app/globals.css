@@ -521,16 +521,30 @@ a {
 
 /* ---------- Navegación inferior ---------- */
 
+/* Se usa tanto en <a> como en <button>. Sin resetear fondo, borde y tipografía,
+   el navegador le da a los botones su estilo por defecto: recuadro gris, borde
+   biselado y Arial. Es decir, "SALIR" y "← ATRÁS" parecían deshabilitados y
+   desentonaban con el resto de la interfaz. */
 .backlink {
   display: inline-flex;
   align-items: center;
   min-height: 48px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
   color: var(--dim);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-decoration: none;
+}
+
+.backlink:hover,
+.backlink:focus-visible {
+  color: var(--fg);
 }
 
 .steps {

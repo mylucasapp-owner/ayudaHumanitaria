@@ -79,7 +79,7 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 ### 3. Acreditar validadores
 
 ```bash
-node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Cali" coordinacion@ong.org
+node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Valle del Cauca" coordinacion@ong.org
 ```
 
 Crea la cuenta, la acredita y envía un correo para que definan su contraseña.

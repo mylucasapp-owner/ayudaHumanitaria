@@ -43,8 +43,9 @@ export const mapClass = (base: string) =>
  * Se cambia por variables de entorno al desplegar en otra emergencia.
  */
 export const FALLBACK_CENTER = {
-  // Centro del triángulo Cali · Chocó · Pereira, la zona afectada. Bogotá
-  // dejaría el mapa mirando a 250 km del problema.
+  // Suroccidente: donde se concentra la emergencia. Solo se usa cuando no hay
+  // GPS ni necesidades cargadas; en cuanto llega cualquiera de los dos, el mapa
+  // se recentra. Bogotá dejaría la vista a 250 km del problema.
   lat: Number(process.env.NEXT_PUBLIC_DEFAULT_LAT ?? 4.55),
   lng: Number(process.env.NEXT_PUBLIC_DEFAULT_LNG ?? -76.3),
 };

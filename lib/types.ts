@@ -4,6 +4,7 @@ export const CATEGORIES = [
   "agua",
   "refugio",
   "transporte",
+  "otro",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -14,6 +15,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   agua: "AGUA / ALIMENTO",
   refugio: "REFUGIO",
   transporte: "TRANSPORTE",
+  otro: "OTRA AYUDA",
 };
 
 /** Glifo de una sola letra para los pines del mapa, legible a 30px. */
@@ -23,6 +25,7 @@ export const CATEGORY_GLYPH: Record<Category, string> = {
   agua: "A",
   refugio: "R",
   transporte: "T",
+  otro: "O",
 };
 
 /** Ejemplo mostrado como placeholder para que el reporte sea concreto. */
@@ -32,7 +35,23 @@ export const CATEGORY_HINT: Record<Category, string> = {
   agua: "Ej: agua potable para 12 personas, 2 bebés",
   refugio: "Ej: carpa y frazadas para familia de 5",
   transporte: "Ej: traslado de herido a hospital regional",
+  otro: "Ej: evaluar daños de la casa antes de volver a habitarla",
 };
+
+/**
+ * Qué cabe en "OTRA AYUDA". Una emergencia produce necesidades que no entran en
+ * ninguna casilla —peritar una vivienda agrietada, un servicio funerario, un
+ * veterinario para los animales de los que vive una familia— y sin este cajón
+ * quedaban forzadas dentro de "MÉDICO" o sin reportar. Se muestra bajo el campo
+ * para que nadie descarte su necesidad por creer que no aplica.
+ */
+export const OTHER_EXAMPLES = [
+  "Evaluación de daños de la vivienda",
+  "Servicios funerarios",
+  "Atención veterinaria o para animales de trabajo",
+  "Documentos perdidos",
+  "Otros elementos de supervivencia",
+];
 
 /**
  * abierta      → nadie la ha tomado.

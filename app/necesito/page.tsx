@@ -20,6 +20,7 @@ import {
   CATEGORIES,
   CATEGORY_HINT,
   CATEGORY_LABEL,
+  OTHER_EXAMPLES,
   type Category,
   type GeoPoint,
   type Need,
@@ -192,6 +193,14 @@ function NecesitoFlow() {
             <div className="counter">
               {description.length}/{MAX_DESCRIPTION}
             </div>
+            {/* "OTRA AYUDA" no dice por sí sola qué cabe dentro. Sin los
+                ejemplos, quien necesita peritar su casa o enterrar a alguien
+                asume que la plataforma no es para eso y no reporta. */}
+            {category === "otro" && (
+              <p className="meta">
+                Por ejemplo: {OTHER_EXAMPLES.join(" · ").toLowerCase()}.
+              </p>
+            )}
           </div>
 
           <div className="field">

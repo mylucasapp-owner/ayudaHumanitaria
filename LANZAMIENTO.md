@@ -30,7 +30,7 @@ bloqueante.
 Un comando por organización:
 
 ```bash
-node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Cali" coordinacion@ong.org
+node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Valle del Cauca" coordinacion@ong.org
 ```
 
 Crea la cuenta, la acredita e imprime un **enlace de un solo uso** para que
@@ -64,8 +64,8 @@ responsable con nombre: defensa civil, bomberos, Cruz Roja, ONG con operación
 en terreno, juntas de acción comunal, parroquias que ya estén coordinando
 entregas. El criterio no es el tamaño sino que alguien pueda ir a mirar.
 
-**Cuántos.** Al menos dos o tres antes de difundir, y de zonas distintas —Cali,
-Chocó y Pereira están a cientos de kilómetros y nadie verifica lo que no puede
+**Cuántos.** Al menos dos o tres antes de difundir, y de departamentos
+distintos: las zonas están a cientos de kilómetros y nadie verifica lo que no puede
 visitar. Un validador por zona es el mínimo para que la cola no se estanque.
 
 **Qué explicarles.** Que su trabajo es confirmar que la necesidad existe (por

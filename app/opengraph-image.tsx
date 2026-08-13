@@ -85,7 +85,7 @@ export default function Image() {
             paddingTop: 24,
           }}
         >
-          <span>Cali · Chocó · Pereira</span>
+          <span>Zonas afectadas de Colombia</span>
           <span>El Errante Coding Labs</span>
         </div>
       </div>

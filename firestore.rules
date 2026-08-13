@@ -283,10 +283,16 @@ service cloud.firestore {
           'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
           'verifiedByUid', 'zone', 'claim', 'createdAt', 'updatedAt'
         ]) &&
-        // Lista cerrada: la zona ordena el feed y un valor inventado dejaria la
-        // necesidad fuera de todos los filtros, invisible sin parecer rota.
-        incoming().zone in ['cali', 'pereira', 'choco', 'otra'] &&
-        incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte'] &&
+        // Listas cerradas: la zona ordena el feed y un valor inventado dejaria
+        // la necesidad fuera de todos los filtros, invisible sin parecer rota.
+        // Una zona por departamento, para que ningun municipio quede sin nombre.
+        incoming().zone in ['valle', 'cauca', 'choco', 'narino', 'putumayo',
+          'risaralda', 'quindio', 'caldas', 'tolima', 'huila', 'antioquia',
+          'cundinamarca', 'boyaca', 'santander', 'nortedesantander',
+          'atlantico', 'bolivar', 'magdalena', 'cesar', 'cordoba', 'sucre',
+          'laguajira', 'sanandres', 'meta', 'casanare', 'arauca', 'vichada',
+          'guainia', 'guaviare', 'caqueta', 'vaupes', 'amazonas', 'otra'] &&
+        incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte', 'otro'] &&
         incoming().description is string &&
         incoming().description.size() > 0 && incoming().description.size() <= 140 &&
         incoming().reference is string && incoming().reference.size() <= 120 &&

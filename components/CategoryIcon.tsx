@@ -37,6 +37,16 @@ const PATHS: Record<Category, React.ReactNode> = {
       <circle cx="17" cy="18.5" r="2" />
     </>
   ),
+  // Tres puntos: lo que no cabe en las otras casillas. Deliberadamente neutro,
+  // porque aquí entran cosas muy distintas —peritar una casa, un funeral, un
+  // veterinario— y cualquier dibujo concreto excluiría a las demás.
+  otro: (
+    <>
+      <path d="M5 12h.01" />
+      <path d="M12 12h.01" />
+      <path d="M19 12h.01" />
+    </>
+  ),
 };
 
 export default function CategoryIcon({
