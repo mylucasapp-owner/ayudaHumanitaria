@@ -95,7 +95,7 @@ test("nadie publica a nombre de otro ni nace verificada", async () => {
 
 test("el contacto valida forma y no admite campos de más", async () => {
   const a = await anonActor("contacto");
-  const id = await as(a, () => createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }));
+  const { id } = await as(a, () => createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }));
 
   const ref = doc(a.db, "needs", id, "private", "contact");
   assert.ok(
@@ -221,7 +221,7 @@ test("el ledger ajeno es privado, salvo para validadores", async () => {
 test("las necesidades no se borran nunca", async () => {
   const a = await anonActor("borrador");
   const v = await validatorActor("bomberos");
-  const id = await as(a, () =>
+  const { id } = await as(a, () =>
     createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }),
   );
 
@@ -235,7 +235,7 @@ test("las necesidades no se borran nunca", async () => {
 test("un compromiso no puede durar más de lo que permiten las reglas", async () => {
   const a = await anonActor("autor");
   const b = await anonActor("acaparador");
-  const id = await as(a, () =>
+  const { id } = await as(a, () =>
     createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }),
   );
 
@@ -263,7 +263,7 @@ test("un compromiso no puede durar más de lo que permiten las reglas", async ()
 test("un compromiso con nombre vacío se rechaza", async () => {
   const a = await anonActor("autor");
   const b = await anonActor("anonimo");
-  const id = await as(a, () =>
+  const { id } = await as(a, () =>
     createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }),
   );
 
@@ -291,7 +291,7 @@ test("un compromiso con nombre vacío se rechaza", async () => {
 test("una denuncia no admite motivos inventados", async () => {
   const a = await anonActor("autor");
   const b = await anonActor("denunciante");
-  const id = await as(a, () =>
+  const { id } = await as(a, () =>
     createNeed(a.uid, { ...VALID, contact: { name: "R", phone: "+56911112222" } }),
   );
 

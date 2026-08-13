@@ -3,7 +3,12 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { TILE_ATTRIBUTION, TILE_URL, FALLBACK_CENTER } from "./tiles";
+import {
+  TILE_ATTRIBUTION,
+  TILE_URL,
+  FALLBACK_CENTER,
+  FALLBACK_ZOOM,
+} from "./tiles";
 import { CATEGORY_GLYPH, isClaimExpired, type GeoPoint, type Need } from "@/lib/types";
 
 function pinIcon(need: Need) {
@@ -42,7 +47,7 @@ export default function NeedsMap({
     if (!holder.current || map.current) return;
     const m = L.map(holder.current, {
       center: [FALLBACK_CENTER.lat, FALLBACK_CENTER.lng],
-      zoom: 12,
+      zoom: FALLBACK_ZOOM,
       zoomControl: true,
       attributionControl: true,
     });

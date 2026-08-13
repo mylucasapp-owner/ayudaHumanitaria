@@ -14,6 +14,7 @@ import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 
 initializeApp();
@@ -88,6 +89,94 @@ export const detectarRafagaDePublicaciones = onDocumentCreated(
       });
   },
 );
+
+/**
+ * Canje del código de recuperación.
+ *
+ * La identidad de un usuario vive en el almacenamiento del navegador, que es
+ * material desechable: se pierde al limpiar datos, al cambiar de teléfono, o
+ * simplemente porque Safari borra el almacenamiento tras siete días sin
+ * visitas. Sin esta función, alguien que reportó y volvió a la semana ya no
+ * podría cerrar su propia necesidad ni ver quién la tomó.
+ *
+ * El código es el secreto: la colección `recovery` es ilegible para todo
+ * cliente. Canjearlo transfiere la titularidad del reporte a quien lo presenta.
+ */
+const RECOVERY_ATTEMPT_LIMIT = 5;
+const RECOVERY_ATTEMPT_WINDOW_MS = 60 * 60 * 1000;
+
+export const recuperarReporte = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Sesión no iniciada.");
+
+  const code = String(request.data?.codigo ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  if (code.length !== 8) {
+    throw new HttpsError("invalid-argument", "El código tiene 8 caracteres.");
+  }
+
+  // Freno de fuerza bruta. Sin esto, 1,1 billones de combinaciones se recorren
+  // con paciencia y un script.
+  const intentosRef = db.doc(`recoveryAttempts/${uid}`);
+  const intentos = await intentosRef.get();
+  const ahora = Date.now();
+  const desde = intentos.get("windowStart")?.toMillis?.() ?? 0;
+  const dentroDeVentana = ahora - desde < RECOVERY_ATTEMPT_WINDOW_MS;
+  const usados = dentroDeVentana ? (intentos.get("count") ?? 0) : 0;
+
+  if (usados >= RECOVERY_ATTEMPT_LIMIT) {
+    throw new HttpsError(
+      "resource-exhausted",
+      "Demasiados intentos. Espera una hora y vuelve a probar.",
+    );
+  }
+  await intentosRef.set({
+    count: usados + 1,
+    windowStart: dentroDeVentana
+      ? intentos.get("windowStart")
+      : FieldValue.serverTimestamp(),
+  });
+
+  const vale = await db.doc(`recovery/${code}`).get();
+  if (!vale.exists) {
+    throw new HttpsError("not-found", "Ese código no corresponde a ningún reporte.");
+  }
+
+  const needId = vale.get("needId") as string;
+  const createdBy = vale.get("createdBy") as string;
+  const needRef = db.doc(`needs/${needId}`);
+  const need = await needRef.get();
+  if (!need.exists) {
+    throw new HttpsError("not-found", "El reporte ya no existe.");
+  }
+
+  // Impide que alguien registre un código apuntando al reporte de otro y luego
+  // lo canjee: el vale solo vale si lo creó el mismo que publicó.
+  if (need.get("ownerUid") !== createdBy) {
+    logger.warn("vale de recuperación que no corresponde al autor", {
+      needId,
+      createdBy,
+    });
+    throw new HttpsError("permission-denied", "Ese código no es válido.");
+  }
+
+  if ((await db.doc(`blocked/${uid}`).get()).exists) {
+    throw new HttpsError("permission-denied", "Esta sesión está restringida.");
+  }
+
+  await needRef.update({ ownerUid: uid, updatedAt: FieldValue.serverTimestamp() });
+  // El contacto guarda su propio `ownerUid`; sin actualizarlo el nuevo titular
+  // podría leerlo pero no corregir el teléfono.
+  await needRef
+    .collection("private")
+    .doc("contact")
+    .set({ ownerUid: uid }, { merge: true });
+  await db.doc(`recovery/${code}`).set({ createdBy: uid }, { merge: true });
+
+  logger.info("reporte recuperado", { needId, uid });
+  return { needId };
+});
 
 /**
  * Retención de datos personales.

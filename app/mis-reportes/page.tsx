@@ -6,7 +6,14 @@ import ConnectionState from "@/components/ConnectionState";
 import FirebaseGate from "@/components/FirebaseGate";
 import NeedCard from "@/components/NeedCard";
 import { useAuth } from "@/lib/auth";
-import { subscribeToMyClaims, subscribeToMyNeeds } from "@/lib/needs";
+import {
+  formatRecoveryCode,
+  rememberedCode,
+  subscribeToMyClaims,
+  subscribeToMyNeeds,
+} from "@/lib/needs";
+import { SITE } from "@/lib/site";
+import { requestPersistentStorage, type PersistenceState } from "@/lib/storage";
 import type { Need } from "@/lib/types";
 
 export default function Page() {
@@ -23,6 +30,15 @@ function MisReportesPage() {
   const [claimed, setClaimed] = useState<Need[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [persistencia, setPersistencia] = useState<PersistenceState>("desconocido");
+
+  const pendientes = mine.filter((n) => n.pendingSync).length;
+
+  // Se pide aquí y no al arrancar: el navegador concede el permiso con mucha
+  // más facilidad cuando hay uso real, y quien mira sus reportes ya lo tiene.
+  useEffect(() => {
+    requestPersistentStorage().then(setPersistencia);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +70,29 @@ function MisReportesPage() {
       <ConnectionState />
       {error && <p className="notice notice--error">{error}</p>}
 
+      {pendientes > 0 && (
+        <p className="notice notice--signal">
+          <span className="strong">
+            {pendientes === 1
+              ? "1 reporte todavía está solo en este teléfono"
+              : `${pendientes} reportes todavía están solo en este teléfono`}
+          </span>
+          . Se enviarán apenas haya señal. Hasta entonces, no borres los datos
+          del navegador ni desinstales la app.
+        </p>
+      )}
+
+      {persistencia === "efimero" && (
+        <p className="notice">
+          Este navegador puede borrar los datos guardados si le falta espacio.
+          Instalar la app desde{" "}
+          <Link className="strong" href="/como-usar/">
+            Cómo funciona
+          </Link>{" "}
+          hace que los conserve.
+        </p>
+      )}
+
       <section className="stack">
         <span className="label">Necesidades que reporté</span>
         {loading ? (
@@ -63,8 +102,12 @@ function MisReportesPage() {
         ) : (
           <ul className="stack">
             {mine.map((n) => (
-              <li key={n.id}>
+              <li key={n.id} className="stack" style={{ gap: 4 }}>
                 <NeedCard need={n} href={`/necesidad/?id=${n.id}`} />
+                {n.pendingSync && (
+                  <p className="meta">Sin enviar · esperando señal</p>
+                )}
+                <CodigoDeReporte needId={n.id} />
               </li>
             ))}
           </ul>
@@ -87,10 +130,50 @@ function MisReportesPage() {
         )}
       </section>
 
-      <p className="meta center">
-        Esta lista vive en este dispositivo y navegador. Si borras los datos del
-        navegador, perderás el acceso a tus reportes.
-      </p>
+      <section className="stack">
+        <hr className="hr" />
+        <p className="meta">
+          Esta lista vive en este dispositivo. Si borras los datos del
+          navegador, cambias de teléfono o pasas mucho tiempo sin abrir la app,
+          puedes perder el acceso — pero tu código de recuperación te lo
+          devuelve.
+        </p>
+        <Link className="btn btn--ghost" href="/recuperar/">
+          Tengo un código de recuperación
+        </Link>
+      </section>
     </main>
+  );
+}
+
+/**
+ * Muestra el código si este dispositivo todavía lo recuerda, con una salida
+ * para llevárselo fuera. Que no aparezca no significa que se haya perdido: solo
+ * que este navegador ya no lo tiene guardado.
+ */
+function CodigoDeReporte({ needId }: { needId: string }) {
+  const [code, setCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCode(rememberedCode(needId));
+  }, [needId]);
+
+  if (!code) return null;
+  const shown = formatRecoveryCode(code);
+  const mensaje = `Mi código de recuperación en Ayuda Humanitaria es ${shown} — ${SITE.url}/recuperar/`;
+
+  return (
+    <div className="row" style={{ gap: 10, alignItems: "center" }}>
+      <span className="meta">Código</span>
+      <span className="mono strong grow">{shown}</span>
+      <a
+        className="meta strong"
+        href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Guardarlo aparte
+      </a>
+    </div>
   );
 }

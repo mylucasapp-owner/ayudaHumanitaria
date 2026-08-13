@@ -19,7 +19,8 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "./firebase";
 import {
   CLAIM_LIMIT_PER_WINDOW,
   CLAIM_TTL_MS,
@@ -92,8 +93,80 @@ export type NewNeed = {
   contact: NeedContact;
 };
 
-/** Crea la necesidad y su contacto protegido en una sola escritura atómica. */
-export async function createNeed(uid: string, input: NewNeed): Promise<string> {
+export type CreatedNeed = {
+  id: string;
+  /** La escritura quedó en cola local y saldrá al recuperar la señal. */
+  pending: boolean;
+  /** Código para recuperar el reporte desde otro teléfono. */
+  code: string;
+};
+
+/**
+ * Alfabeto sin caracteres que se confunden al leerlos en voz alta o copiarlos
+ * a mano bajo estrés: sin O ni 0, sin I ni 1.
+ */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * Código de recuperación. Ocho caracteres del alfabeto anterior dan 1,1 billones
+ * de combinaciones: adivinarlo es inviable, y la Cloud Function además limita
+ * los intentos.
+ */
+function generateRecoveryCode(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+}
+
+/** Se muestra en dos bloques porque así se dicta y se copia sin equivocarse. */
+export function formatRecoveryCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}
+
+export function normalizeRecoveryCode(input: string): string {
+  return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+const CODE_KEY = "ah.codigos";
+
+/** Guarda el código localmente por comodidad; la copia que importa es la que
+ *  el usuario se lleva fuera del teléfono. */
+export function rememberCode(needId: string, code: string) {
+  try {
+    const map = JSON.parse(localStorage.getItem(CODE_KEY) ?? "{}");
+    map[needId] = code;
+    localStorage.setItem(CODE_KEY, JSON.stringify(map));
+  } catch {
+    /* sin almacenamiento el código solo vive en la pantalla del ticket */
+  }
+}
+
+export function rememberedCode(needId: string): string | null {
+  try {
+    const map = JSON.parse(localStorage.getItem(CODE_KEY) ?? "{}");
+    return typeof map[needId] === "string" ? map[needId] : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Plazo tras el cual damos la escritura por encolada en vez de por fallida. */
+const COMMIT_ACK_MS = 2500;
+
+/**
+ * Crea la necesidad y su contacto protegido en una sola escritura atómica.
+ *
+ * No espera la confirmación del servidor para dar el ticket por bueno. La
+ * promesa de Firestore no resuelve hasta que el backend responde, así que en
+ * una zona sin cobertura la pantalla se quedaría en "Enviando…" para siempre y
+ * la gente reenviaría el mismo reporte. La escritura ya está persistida en el
+ * dispositivo y sale sola al reconectar: eso es suficiente para responderle al
+ * usuario, siempre que se le diga la verdad sobre el estado.
+ */
+export async function createNeed(
+  uid: string,
+  input: NewNeed,
+): Promise<CreatedNeed> {
   const ref = doc(needsCol());
   const batch = writeBatch(db());
   batch.set(ref, {
@@ -117,8 +190,32 @@ export async function createNeed(uid: string, input: NewNeed): Promise<string> {
     phone: input.contact.phone.trim().slice(0, 25),
     ownerUid: uid,
   });
-  await batch.commit();
-  return ref.id;
+
+  // El vale de recuperación viaja en el mismo lote: o existen los tres
+  // documentos o no existe ninguno. Ningún cliente puede leer esta colección;
+  // solo la Cloud Function que canjea el código.
+  const code = generateRecoveryCode();
+  batch.set(doc(db(), "recovery", code), {
+    needId: ref.id,
+    createdBy: uid,
+    at: serverTimestamp(),
+  });
+
+  const confirmada = batch.commit();
+
+  // Si el servidor rechaza (reglas, cuenta bloqueada) responde rápido y hay que
+  // avisar. Si simplemente no hay red, no responde nunca: pasado el plazo se
+  // asume encolada, que es exactamente lo que ocurrió.
+  const pending = await Promise.race([
+    confirmada.then(() => false),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(true), COMMIT_ACK_MS)),
+  ]);
+
+  // Sin este catch, un rechazo posterior queda como promesa no manejada.
+  confirmada.catch(() => undefined);
+
+  rememberCode(ref.id, code);
+  return { id: ref.id, pending, code };
 }
 
 /** Feed en vivo de necesidades pendientes, lo más reciente primero. */
@@ -145,10 +242,14 @@ export function subscribeToMyNeeds(
 ) {
   return onSnapshot(
     query(needsCol(), where("ownerUid", "==", uid)),
+    // Sin `includeMetadataChanges` no hay forma de saber qué reportes siguen
+    // solo en el teléfono, y esa es justo la información que el usuario
+    // necesita antes de borrar datos del navegador o cambiar de dispositivo.
+    { includeMetadataChanges: true },
     (snap) =>
       onData(
         snap.docs
-          .map(toNeed)
+          .map((d) => ({ ...toNeed(d), pendingSync: d.metadata.hasPendingWrites }))
           .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)),
       ),
     onError,
@@ -200,6 +301,20 @@ export class ClaimQuotaError extends Error {
         "Cierra las que tienes pendientes o espera un momento.",
     );
     this.name = "ClaimQuotaError";
+  }
+}
+
+export class RecoveryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RecoveryError";
+  }
+}
+
+export class OfflineError extends Error {
+  constructor(accion: string) {
+    super(`Necesitas señal para ${accion}. Reintenta cuando vuelva la conexión.`);
+    this.name = "OfflineError";
   }
 }
 
@@ -305,6 +420,56 @@ export async function claimNeed(
   uid: string,
   name: string,
   isValidator = false,
+) {
+  // Comprometerse exige saber si alguien llegó antes, y eso no se puede
+  // resolver desde la caché local. Mejor decirlo de entrada que dejar al
+  // voluntario esperando frente a una pantalla muda.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new OfflineError("tomar una necesidad");
+  }
+  return conPlazoDeRed(
+    () => intentarCompromiso(needId, uid, name, isValidator),
+    "tomar una necesidad",
+  );
+}
+
+/**
+ * Plazo para operaciones que no funcionan sin red. `navigator.onLine` no basta:
+ * en móviles marca "en línea" con un portal cautivo o con señal que no cursa
+ * datos, que es justo lo que pasa cuando una antena queda saturada.
+ */
+const NETWORK_DEADLINE_MS = 12000;
+
+async function conPlazoDeRed<T>(fn: () => Promise<T>, accion: string): Promise<T> {
+  let temporizador: ReturnType<typeof setTimeout>;
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise<never>((_, reject) => {
+        temporizador = setTimeout(
+          () => reject(new OfflineError(accion)),
+          NETWORK_DEADLINE_MS,
+        );
+      }),
+    ]);
+  } catch (e) {
+    // Firestore avisa la falta de red con `unavailable`. Sin traducirlo, el
+    // voluntario ve "no se pudo completar la acción" y no sabe si el problema
+    // es suyo, de la app, o que alguien se le adelantó.
+    if ((e as { code?: string })?.code === "unavailable") {
+      throw new OfflineError(accion);
+    }
+    throw e;
+  } finally {
+    clearTimeout(temporizador!);
+  }
+}
+
+async function intentarCompromiso(
+  needId: string,
+  uid: string,
+  name: string,
+  isValidator: boolean,
 ) {
   const remembered = isValidator ? null : rememberedSlot(needId);
   const seq = isValidator ? 0 : (remembered ?? (await reserveSlot(uid, needId)));
@@ -486,6 +651,38 @@ export async function isBlocked(uid: string): Promise<boolean> {
     return (await getDoc(doc(db(), "blocked", uid))).exists();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Canjea un código de recuperación y devuelve el reporte a quien lo presenta.
+ *
+ * Es la salida cuando la identidad del navegador se pierde: al limpiar datos,
+ * al cambiar de teléfono, o porque el navegador borró el almacenamiento por su
+ * cuenta. El canje lo resuelve una Cloud Function porque exige leer una
+ * colección que ningún cliente puede ver.
+ */
+export async function recoverNeed(rawCode: string): Promise<string> {
+  const codigo = normalizeRecoveryCode(rawCode);
+  if (codigo.length !== 8) {
+    throw new RecoveryError("El código tiene 8 caracteres, como ABCD-2345.");
+  }
+  try {
+    const call = httpsCallable<{ codigo: string }, { needId: string }>(
+      functions(),
+      "recuperarReporte",
+    );
+    const { data } = await call({ codigo });
+    return data.needId;
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "functions/unavailable" || err.code === "unavailable") {
+      throw new OfflineError("recuperar un reporte");
+    }
+    throw new RecoveryError(
+      err.message?.replace(/^.*?: /, "") ??
+        "No se pudo recuperar el reporte. Revisa el código.",
+    );
   }
 }
 

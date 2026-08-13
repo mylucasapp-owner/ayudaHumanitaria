@@ -1,5 +1,6 @@
 import Link from "next/link";
 import OfflineNotice from "@/components/OfflineNotice";
+import { SITE } from "@/lib/site";
 
 export default function Home() {
   return (
@@ -24,6 +25,14 @@ export default function Home() {
         </Link>
       </div>
 
+      <p className="meta center">
+        Si hay riesgo de vida inmediato, llama primero al{" "}
+        <a className="strong" href={`tel:${SITE.emergencyNumber}`}>
+          {SITE.emergencyNumber}
+        </a>
+        . Esta plataforma no reemplaza a los servicios de emergencia.
+      </p>
+
       <div className="spacer" />
 
       <nav className="stack" style={{ gap: 10 }}>
@@ -31,13 +40,26 @@ export default function Home() {
         <Link className="btn btn--ghost" href="/mis-reportes/">
           Mis reportes y compromisos
         </Link>
+        <Link className="btn btn--ghost" href="/como-usar/">
+          Cómo funciona · Instalar la app
+        </Link>
         <Link className="btn btn--ghost" href="/validador/">
           Acceso validadores
         </Link>
-        <p className="meta center">
-          Si hay riesgo de vida inmediato, llama primero a emergencias.
-        </p>
       </nav>
+
+      <footer className="stack center" style={{ gap: 6 }}>
+        <hr className="hr" />
+        <p className="meta">
+          Hecha sin ánimo de lucro por{" "}
+          <span className="strong">{SITE.author}</span>
+          <br />
+          {SITE.org}
+        </p>
+        <Link className="meta" href="/legal/">
+          Términos, privacidad y buen uso
+        </Link>
+      </footer>
     </main>
   );
 }

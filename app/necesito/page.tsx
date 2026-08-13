@@ -8,7 +8,13 @@ import ConnectionState from "@/components/ConnectionState";
 import FirebaseGate from "@/components/FirebaseGate";
 import { useAuth } from "@/lib/auth";
 import { getCurrentPosition } from "@/lib/geo";
-import { createNeed, MAX_DESCRIPTION, MAX_REFERENCE } from "@/lib/needs";
+import {
+  createNeed,
+  formatRecoveryCode,
+  MAX_DESCRIPTION,
+  MAX_REFERENCE,
+} from "@/lib/needs";
+import { SITE } from "@/lib/site";
 import {
   CATEGORIES,
   CATEGORY_HINT,
@@ -52,6 +58,8 @@ function NecesitoFlow() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState("");
 
   // Quien reporta una vez suele reportar otra: no le pedimos sus datos de nuevo.
   useEffect(() => {
@@ -94,7 +102,7 @@ function NecesitoFlow() {
       } catch {
         /* sin almacenamiento no pasa nada: el reporte se envía igual */
       }
-      const id = await createNeed(user.uid, {
+      const creada = await createNeed(user.uid, {
         category,
         description,
         reference,
@@ -102,7 +110,9 @@ function NecesitoFlow() {
         peopleCount,
         contact: { name, phone },
       });
-      setCreatedId(id);
+      setCreatedId(creada.id);
+      setQueued(creada.pending);
+      setRecoveryCode(creada.code);
       setStep(3);
     } catch {
       setError(
@@ -114,7 +124,7 @@ function NecesitoFlow() {
   }
 
   if (step === 3 && createdId) {
-    return <Ticket id={createdId} />;
+    return <Ticket id={createdId} queued={queued} code={recoveryCode} />;
   }
 
   return (
@@ -344,30 +354,83 @@ function Header({ step, onBack }: { step: Step; onBack: () => void }) {
   );
 }
 
-function Ticket({ id }: { id: string }) {
-  const code = useMemo(() => id.slice(0, 6).toUpperCase(), [id]);
+function Ticket({
+  id,
+  queued,
+  code,
+}: {
+  id: string;
+  queued: boolean;
+  code: string;
+}) {
+  const shown = useMemo(() => formatRecoveryCode(code), [code]);
+  const [copied, setCopied] = useState(false);
+
+  const mensaje = `Reporté una necesidad en Ayuda Humanitaria.\nMi código de recuperación es ${shown}\nSirve para recuperar el reporte si pierdo el teléfono: ${SITE.url}/recuperar/`;
+
   return (
     <main className="shell" id="main">
       <div className="spacer" />
       <section className="stack center" style={{ gap: 16 }}>
-        <h1 className="title">Necesidad publicada</h1>
-        <p className="subtitle">
-          Ya está en el mapa. Un validador puede llamarte para confirmarla.
-        </p>
+        <h1 className="title">
+          {queued ? "Reporte guardado" : "Necesidad publicada"}
+        </h1>
+        {queued ? (
+          <p className="notice notice--signal">
+            No hay señal ahora mismo. Tu reporte quedó guardado en el teléfono y
+            se enviará solo apenas vuelva la conexión.{" "}
+            <span className="strong">No lo escribas de nuevo.</span>
+          </p>
+        ) : (
+          <p className="subtitle">
+            Ya está en el mapa. Un validador puede llamarte para confirmarla.
+          </p>
+        )}
         <div className="card">
-          <div className="label">Tu código</div>
-          <div className="mono strong" style={{ fontSize: 38, letterSpacing: 4 }}>
-            {code}
+          <div className="label">Tu código de recuperación</div>
+          <div className="mono strong" style={{ fontSize: 34, letterSpacing: 3 }}>
+            {shown}
           </div>
         </div>
-        <p className="meta">
-          Guarda este código. Con él puedes seguir tu reporte y cerrarlo cuando
-          la ayuda llegue.
+
+        <p className="notice notice--signal">
+          <span className="strong">Guárdalo fuera de este teléfono.</span> Si lo
+          pierdes o el navegador borra sus datos, este código es lo único que te
+          permite recuperar el reporte desde otro aparato.
         </p>
+
+        <div className="stack" style={{ gap: 10, width: "100%" }}>
+          <a
+            className="btn btn--primary"
+            href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Enviarme el código por WhatsApp
+          </a>
+          <button
+            type="button"
+            className="btn"
+            onClick={async () => {
+              try {
+                if (navigator.share) {
+                  await navigator.share({ text: mensaje });
+                } else {
+                  await navigator.clipboard.writeText(shown);
+                  setCopied(true);
+                }
+              } catch {
+                /* el usuario canceló el diálogo */
+              }
+            }}
+          >
+            {copied ? "Código copiado" : "Compartir o copiar"}
+          </button>
+        </div>
       </section>
       <div className="spacer" />
       <div className="stack">
-        <Link className="btn btn--primary" href={`/necesidad/?id=${id}`}>
+        <Link className="btn btn--ghost" href={`/necesidad/?id=${id}`}>
           Ver mi reporte
         </Link>
         <Link className="btn btn--ghost" href="/">

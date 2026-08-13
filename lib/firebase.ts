@@ -5,6 +5,11 @@ import {
 } from "firebase/app-check";
 import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
 import {
+  connectFunctionsEmulator,
+  getFunctions,
+  type Functions,
+} from "firebase/functions";
+import {
   connectFirestoreEmulator,
   initializeFirestore,
   memoryLocalCache,
@@ -60,14 +65,17 @@ const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "1";
 
 let dbRef: Firestore | null = null;
 let authRef: Auth | null = null;
+let functionsRef: Functions | null = null;
 
 /**
  * Instancias inyectadas por las pruebas para poder ejecutar el código real con
  * varias identidades a la vez. En el navegador siempre vale `null`.
  */
-let injected: { db: Firestore; auth: Auth } | null = null;
+let injected: { db: Firestore; auth: Auth; functions: Functions } | null = null;
 
-export function __injectForTests(instances: { db: Firestore; auth: Auth } | null) {
+export function __injectForTests(
+  instances: { db: Firestore; auth: Auth; functions: Functions } | null,
+) {
   injected = instances;
 }
 
@@ -90,6 +98,16 @@ export function db(): Firestore {
     if (useEmulators) connectFirestoreEmulator(dbRef, "127.0.0.1", 8181);
   }
   return dbRef;
+}
+
+/** Las funciones viven junto a la base de datos, en us-east1. */
+export function functions(): Functions {
+  if (injected) return injected.functions;
+  if (!functionsRef) {
+    functionsRef = getFunctions(app(), "us-east1");
+    if (useEmulators) connectFunctionsEmulator(functionsRef, "127.0.0.1", 5001);
+  }
+  return functionsRef;
 }
 
 export function auth(): Auth {

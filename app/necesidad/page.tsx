@@ -14,6 +14,7 @@ import {
   BlockedError,
   ClaimQuotaError,
   ClaimTakenError,
+  OfflineError,
   blockUser,
   claimNeed,
   discardNeed,
@@ -126,7 +127,8 @@ function NeedDetail() {
       setError(
         e instanceof ClaimTakenError ||
           e instanceof ClaimQuotaError ||
-          e instanceof BlockedError
+          e instanceof BlockedError ||
+          e instanceof OfflineError
           ? e.message
           : "No se pudo completar la acción. Revisa la conexión.",
       );

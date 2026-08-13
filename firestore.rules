@@ -54,6 +54,22 @@ service cloud.firestore {
       allow write: if false; // solo consola / SDK admin
     }
 
+    // Vales de recuperación. El código ES el secreto, así que la colección es
+    // ciega para todo cliente: solo la Cloud Function que lo canjea puede
+    // leerla. Poder leerla equivaldría a poder adueñarse de cualquier reporte.
+    //
+    // `createdBy` es lo que impide registrar un código apuntando al reporte de
+    // otro: al canjear, la función exige que coincida con el autor real.
+    match /recovery/{code} {
+      allow read: if false;
+      allow create: if canWrite() &&
+        request.resource.data.keys().hasOnly(['needId', 'createdBy', 'at']) &&
+        request.resource.data.needId is string &&
+        request.resource.data.createdBy == uid() &&
+        request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+
     match /blocked/{bid} {
       // El bloqueado puede leer su propio estado para que la app se lo explique.
       allow read: if signedIn() && (uid() == bid || isValidator());

@@ -129,6 +129,11 @@ export type Need = {
   /** Queda registrado quién verificó, no solo con qué nombre firmó. */
   verifiedByUid: string | null;
   claim: Claim | null;
+  /**
+   * La escritura todavía vive solo en este dispositivo. Solo lo informa
+   * `subscribeToMyNeeds`; en el feed general siempre es indefinido.
+   */
+  pendingSync?: boolean;
 };
 
 export type Claim = {

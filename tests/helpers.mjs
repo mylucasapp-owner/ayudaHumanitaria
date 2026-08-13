@@ -18,6 +18,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { __injectForTests } from "../lib/firebase.ts";
 
 export const PROJECT = "ayuda-humanitaria-89e72";
@@ -36,8 +37,10 @@ export async function actor(label) {
   connectAuthEmulator(auth, `http://${AUTH_HOST}`, { disableWarnings: true });
   const db = getFirestore(app);
   connectFirestoreEmulator(db, "127.0.0.1", 8181);
+  const fns = getFunctions(app, "us-east1");
+  connectFunctionsEmulator(fns, "127.0.0.1", 5001);
   openApps.push(app);
-  return { label, app, auth, db };
+  return { label, app, auth, db, functions: fns };
 }
 
 export async function anonActor(label) {
@@ -76,7 +79,7 @@ export async function validatorActor(label, name = "Bomberos 3a", zone = "Norte"
 
 /** Ejecuta `fn` con el código de la app apuntando a la sesión de este actor. */
 export async function as(a, fn) {
-  __injectForTests({ db: a.db, auth: a.auth });
+  __injectForTests({ db: a.db, auth: a.auth, functions: a.functions });
   try {
     return await fn();
   } finally {

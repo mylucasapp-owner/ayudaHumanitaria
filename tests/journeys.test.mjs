@@ -48,7 +48,8 @@ const REPORT = {
 };
 
 async function publish(owner, overrides = {}) {
-  return as(owner, () => createNeed(owner.uid, { ...REPORT, ...overrides }));
+  const creada = await as(owner, () => createNeed(owner.uid, { ...REPORT, ...overrides }));
+  return creada.id;
 }
 
 async function statusOf(needId) {
