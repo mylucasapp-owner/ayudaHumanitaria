@@ -37,17 +37,62 @@ export const CATEGORY_HINT: Record<Category, string> = {
 /**
  * abierta      → nadie la ha tomado.
  * comprometida → un oferente la bloqueó; no debe duplicarse el esfuerzo.
- * resuelta     → la ayuda llegó (cierre por solicitante o validador).
- * falsa        → reporte no verificable, descartado por un validador.
+ * entregada    → el oferente dice haber entregado. NO cierra la necesidad:
+ *                sigue visible hasta que el solicitante o un validador lo
+ *                confirmen. Si el oferente pudiera cerrarla por su cuenta,
+ *                bastaría con tomar y "entregar" todo para vaciar el mapa.
+ * resuelta      → confirmada por el solicitante o un validador. Cierra.
+ * falsa         → reporte no verificable, descartado por un validador.
  */
-export type NeedStatus = "abierta" | "comprometida" | "resuelta" | "falsa";
+export type NeedStatus =
+  | "abierta"
+  | "comprometida"
+  | "entregada"
+  | "resuelta"
+  | "falsa";
 
 export const STATUS_LABEL: Record<NeedStatus, string> = {
   abierta: "ABIERTA",
   comprometida: "COMPROMETIDA",
+  entregada: "ENTREGA POR CONFIRMAR",
   resuelta: "RESUELTA",
   falsa: "DESCARTADA",
 };
+
+/** Motivos de denuncia. Lista cerrada: un texto libre sería otro canal de abuso. */
+export const FLAG_REASONS = [
+  "duplicada",
+  "no-existe",
+  "datos-falsos",
+  "ya-resuelta",
+  "estafa",
+] as const;
+
+export type FlagReason = (typeof FLAG_REASONS)[number];
+
+export const FLAG_LABEL: Record<FlagReason, string> = {
+  duplicada: "Está duplicada",
+  "no-existe": "Fui y no existe",
+  "datos-falsos": "Los datos son falsos",
+  "ya-resuelta": "Ya fue resuelta",
+  estafa: "Parece una estafa",
+};
+
+export type Flag = {
+  needId: string;
+  uid: string;
+  reason: FlagReason;
+  at: number | null;
+};
+
+/**
+ * Cupo de compromisos por ventana. Un voluntario real atiende unas pocas
+ * necesidades a la vez; quien cosecha teléfonos para estafar necesita cientos.
+ * El cupo hace cara esa diferencia sin estorbar a nadie de buena fe.
+ * Los validadores están exentos: coordinan en volumen y responden con nombre.
+ */
+export const CLAIM_WINDOW_MS = 6 * 60 * 60 * 1000;
+export const CLAIM_LIMIT_PER_WINDOW = 8;
 
 export type GeoPoint = { lat: number; lng: number };
 
@@ -68,6 +113,8 @@ export type Need = {
   /** Un validador confirmó en terreno o por teléfono que la necesidad es real. */
   verified: boolean;
   verifiedByName: string | null;
+  /** Queda registrado quién verificó, no solo con qué nombre firmó. */
+  verifiedByUid: string | null;
   claim: Claim | null;
 };
 
@@ -77,6 +124,23 @@ export type Claim = {
   /** ms epoch; pasado este instante cualquiera puede retomar la necesidad. */
   expiresAt: number;
   at: number | null;
+  /**
+   * Número de cupo consumido del registro personal. Es lo que ata cada
+   * compromiso a una posición irrepetible del ledger y hace que el cupo no se
+   * pueda esquivar simplemente omitiendo el contador.
+   */
+  seq: number;
+};
+
+/**
+ * Registro personal de compromisos. `total` es un contador que solo avanza:
+ * cada compromiso consume una posición `slots/{seq}` que no se puede reescribir,
+ * y esa unicidad de ruta es lo que vuelve el cupo inesquivable desde el cliente.
+ */
+export type Ledger = {
+  total: number;
+  windowCount: number;
+  windowStart: number | null;
 };
 
 /**

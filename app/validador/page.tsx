@@ -6,10 +6,23 @@ import ConnectionState from "@/components/ConnectionState";
 import FirebaseGate from "@/components/FirebaseGate";
 import NeedCard from "@/components/NeedCard";
 import { authMessage, signInValidator, signOutValidator, useAuth } from "@/lib/auth";
-import { subscribeToOpenNeeds } from "@/lib/needs";
-import { isClaimExpired, type Need } from "@/lib/types";
+import { subscribeToFlags, subscribeToOpenNeeds } from "@/lib/needs";
+import { FLAG_LABEL, isClaimExpired, type Flag, type Need } from "@/lib/types";
 
-type Filter = "pendientes" | "sin-verificar" | "vencidas";
+type Filter =
+  | "denunciadas"
+  | "por-confirmar"
+  | "sin-verificar"
+  | "vencidas"
+  | "pendientes";
+
+const FILTER_LABEL: Record<Filter, string> = {
+  denunciadas: "Denunciadas",
+  "por-confirmar": "Entregas por confirmar",
+  "sin-verificar": "Sin verificar",
+  vencidas: "Compromisos vencidos",
+  pendientes: "Todas",
+};
 
 export default function Page() {
   return (
@@ -105,12 +118,13 @@ function SignIn({ signedIn }: { signedIn: boolean }) {
 
 function Panel({ name, zone }: { name: string; zone: string }) {
   const [needs, setNeeds] = useState<Need[]>([]);
+  const [flags, setFlags] = useState<Flag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("sin-verificar");
+  const [filter, setFilter] = useState<Filter>("denunciadas");
 
   useEffect(() => {
-    return subscribeToOpenNeeds(
+    const stopNeeds = subscribeToOpenNeeds(
       (list) => {
         setNeeds(list);
         setLoading(false);
@@ -120,10 +134,39 @@ function Panel({ name, zone }: { name: string; zone: string }) {
         setLoading(false);
       },
     );
+    const stopFlags = subscribeToFlags(setFlags, () =>
+      setError(
+        "No se pudieron cargar las denuncias. Puede faltar el índice de grupo.",
+      ),
+    );
+    return () => {
+      stopNeeds();
+      stopFlags();
+    };
   }, []);
+
+  /** Denuncias agrupadas por necesidad: cuántas y por qué motivos. */
+  const flagsByNeed = useMemo(() => {
+    const map = new Map<string, Flag[]>();
+    for (const f of flags) {
+      map.set(f.needId, [...(map.get(f.needId) ?? []), f]);
+    }
+    return map;
+  }, [flags]);
 
   const visible = useMemo(() => {
     switch (filter) {
+      case "denunciadas":
+        // Lo primero que debe mirar un validador: alguien fue y algo no cuadra.
+        return needs
+          .filter((n) => flagsByNeed.has(n.id))
+          .sort(
+            (a, b) =>
+              (flagsByNeed.get(b.id)?.length ?? 0) -
+              (flagsByNeed.get(a.id)?.length ?? 0),
+          );
+      case "por-confirmar":
+        return needs.filter((n) => n.status === "entregada");
       case "sin-verificar":
         return needs.filter((n) => !n.verified);
       case "vencidas":
@@ -132,17 +175,15 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       default:
         return needs;
     }
-  }, [needs, filter]);
+  }, [needs, filter, flagsByNeed]);
 
   const stats = useMemo(
     () => ({
       total: needs.length,
-      verificadas: needs.filter((n) => n.verified).length,
-      tomadas: needs.filter(
-        (n) => n.status === "comprometida" && !isClaimExpired(n),
-      ).length,
+      denunciadas: needs.filter((n) => flagsByNeed.has(n.id)).length,
+      porConfirmar: needs.filter((n) => n.status === "entregada").length,
     }),
-    [needs],
+    [needs, flagsByNeed],
   );
 
   return (
@@ -171,15 +212,23 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       {error && <p className="notice notice--error">{error}</p>}
 
       <div className="card">
-        <div className="row row--between">
+        <div className="stats">
           <Stat label="Pendientes" value={stats.total} />
-          <Stat label="Verificadas" value={stats.verificadas} />
-          <Stat label="Tomadas" value={stats.tomadas} />
+          <Stat label="Denunciadas" value={stats.denunciadas} />
+          <Stat label="Por confirmar" value={stats.porConfirmar} />
         </div>
       </div>
 
       <div className="chips" role="group" aria-label="Filtrar">
-        {(["sin-verificar", "vencidas", "pendientes"] as Filter[]).map((f) => (
+        {(
+          [
+            "denunciadas",
+            "por-confirmar",
+            "sin-verificar",
+            "vencidas",
+            "pendientes",
+          ] as Filter[]
+        ).map((f) => (
           <button
             key={f}
             type="button"
@@ -187,11 +236,7 @@ function Panel({ name, zone }: { name: string; zone: string }) {
             aria-pressed={filter === f}
             onClick={() => setFilter(f)}
           >
-            {f === "sin-verificar"
-              ? "Sin verificar"
-              : f === "vencidas"
-                ? "Compromisos vencidos"
-                : "Todas"}
+            {FILTER_LABEL[f]}
           </button>
         ))}
       </div>
@@ -203,8 +248,19 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       ) : (
         <ul className="stack">
           {visible.map((n) => (
-            <li key={n.id}>
+            <li key={n.id} className="stack" style={{ gap: 4 }}>
               <NeedCard need={n} href={`/necesidad/?id=${n.id}`} />
+              {flagsByNeed.has(n.id) && (
+                <p className="notice notice--signal" style={{ fontSize: 14 }}>
+                  {flagsByNeed.get(n.id)!.length} denuncia
+                  {flagsByNeed.get(n.id)!.length > 1 ? "s" : ""}:{" "}
+                  {[
+                    ...new Set(
+                      flagsByNeed.get(n.id)!.map((f) => FLAG_LABEL[f.reason]),
+                    ),
+                  ].join(" · ")}
+                </p>
+              )}
             </li>
           ))}
         </ul>

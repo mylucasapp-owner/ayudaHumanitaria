@@ -7,6 +7,11 @@
         { "fieldPath": "active", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "flags",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [{ "fieldPath": "at", "order": "DESCENDING" }]
     }
   ],
   "fieldOverrides": []

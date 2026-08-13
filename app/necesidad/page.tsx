@@ -10,18 +10,26 @@ import StatusTags from "@/components/StatusTags";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import {
+  ClaimQuotaError,
   ClaimTakenError,
+  blockUser,
   claimNeed,
   discardNeed,
   fetchContact,
+  flagNeed,
+  markDelivered,
   releaseNeed,
   resolveNeed,
+  subscribeToMyFlag,
   subscribeToNeed,
   verifyNeed,
 } from "@/lib/needs";
 import {
   CATEGORY_LABEL,
+  FLAG_LABEL,
+  FLAG_REASONS,
   isClaimExpired,
+  type FlagReason,
   type GeoPoint,
   type Need,
   type NeedContact,
@@ -49,6 +57,8 @@ function NeedDetail() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [claimName, setClaimName] = useState("");
+  const [flagged, setFlagged] = useState(false);
+  const [showFlagReasons, setShowFlagReasons] = useState(false);
 
   useEffect(() => {
     try {
@@ -80,6 +90,11 @@ function NeedDetail() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!id || !user) return;
+    return subscribeToMyFlag(id, user.uid, setFlagged);
+  }, [id, user]);
+
   const isOwner = !!user && !!need && need.ownerUid === user.uid;
   const isClaimer =
     !!user && !!need?.claim && need.claim.uid === user.uid && !isClaimExpired(need);
@@ -108,7 +123,7 @@ function NeedDetail() {
       await action();
     } catch (e) {
       setError(
-        e instanceof ClaimTakenError
+        e instanceof ClaimTakenError || e instanceof ClaimQuotaError
           ? e.message
           : "No se pudo completar la acción. Revisa la conexión.",
       );
@@ -124,8 +139,10 @@ function NeedDetail() {
   const expired = isClaimExpired(need);
   const takenByOther =
     need.status === "comprometida" && !expired && !isClaimer;
+  const delivered = need.status === "entregada";
   const closed = need.status === "resuelta" || need.status === "falsa";
-  const canClaim = !closed && !takenByOther && !isClaimer && !isOwner;
+  const canClaim =
+    !closed && !delivered && !takenByOther && !isClaimer && !isOwner;
   const km = me && need.location ? distanceKm(me, need.location) : null;
 
   return (
@@ -238,7 +255,7 @@ function NeedDetail() {
               disabled={busy || !user || claimName.trim().length < 2}
               onClick={() =>
                 run(async () => {
-                  await claimNeed(need.id, user!.uid, claimName);
+                  await claimNeed(need.id, user!.uid, claimName, isValidator);
                   try {
                     const prev = JSON.parse(
                       localStorage.getItem(CONTACT_KEY) ?? "{}",
@@ -261,7 +278,7 @@ function NeedDetail() {
           </>
         )}
 
-        {isClaimer && (
+        {isClaimer && !delivered && (
           <>
             <p className="notice notice--signal">
               Tú tienes esta necesidad comprometida. Coordina por teléfono y
@@ -271,9 +288,9 @@ function NeedDetail() {
               type="button"
               className="btn btn--primary"
               disabled={busy}
-              onClick={() => run(() => resolveNeed(need.id))}
+              onClick={() => run(() => markDelivered(need.id))}
             >
-              Ayuda entregada
+              Ya la entregué
             </button>
             <button
               type="button"
@@ -286,15 +303,38 @@ function NeedDetail() {
           </>
         )}
 
+        {isClaimer && delivered && (
+          <p className="notice notice--signal">
+            Registramos tu entrega. La necesidad se cierra cuando quien la pidió
+            —o un validador— lo confirme. Nadie puede cerrarla por su cuenta:
+            así una entrega que no ocurrió no borra el pedido.
+          </p>
+        )}
+
         {isOwner && !closed && (
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            onClick={() => run(() => resolveNeed(need.id))}
-          >
-            Ya recibí esta ayuda
-          </button>
+          <>
+            {delivered && (
+              <p className="notice notice--signal">
+                {need.claim?.name ?? "Un voluntario"} declaró haber entregado la
+                ayuda. Confírmalo solo si la recibiste de verdad.
+              </p>
+            )}
+            <button
+              type="button"
+              className={delivered ? "btn btn--primary" : "btn"}
+              disabled={busy}
+              onClick={() => run(() => resolveNeed(need.id))}
+            >
+              {delivered ? "Confirmo que la recibí" : "Ya recibí esta ayuda"}
+            </button>
+          </>
+        )}
+
+        {delivered && !isOwner && !isClaimer && !isValidator && (
+          <p className="notice">
+            Un voluntario declaró haber entregado esta ayuda. Sigue visible
+            hasta que quien la pidió lo confirme.
+          </p>
         )}
 
         {isValidator && (
@@ -306,19 +346,33 @@ function NeedDetail() {
                 type="button"
                 className="btn"
                 disabled={busy}
-                onClick={() => run(() => verifyNeed(need.id, validator!.name))}
+                onClick={() =>
+                  run(() => verifyNeed(need.id, validator!.name, user!.uid))
+                }
               >
                 Confirmar que es real
               </button>
             )}
-            {need.status === "comprometida" && (
+            {delivered && (
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy}
+                onClick={() => run(() => resolveNeed(need.id))}
+              >
+                Confirmar la entrega y cerrar
+              </button>
+            )}
+            {(need.status === "comprometida" || delivered) && (
               <button
                 type="button"
                 className="btn btn--ghost"
                 disabled={busy}
                 onClick={() => run(() => releaseNeed(need.id))}
               >
-                Liberar compromiso
+                {delivered
+                  ? "La entrega no ocurrió, reabrir"
+                  : "Liberar compromiso"}
               </button>
             )}
             {!closed && (
@@ -331,13 +385,73 @@ function NeedDetail() {
                 Descartar reporte
               </button>
             )}
+            {need.claim && need.claim.uid !== user!.uid && (
+              <button
+                type="button"
+                className="btn btn--danger"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    blockUser(
+                      need.claim!.uid,
+                      user!.uid,
+                      `Bloqueado desde la necesidad ${need.id}`,
+                    ),
+                  )
+                }
+              >
+                Bloquear a quien la tomó
+              </button>
+            )}
           </>
         )}
 
         {closed && (
           <p className="empty">
-            Esta necesidad está cerrada. Gracias a quien la cubrió.
+            {need.status === "resuelta"
+              ? "Esta necesidad está cerrada. Gracias a quien la cubrió."
+              : "Este reporte fue descartado por un validador."}
           </p>
+        )}
+
+        {!isOwner && !closed && (
+          <>
+            <hr className="hr" />
+            {flagged ? (
+              <p className="meta center">
+                Ya avisaste sobre esta necesidad. Un validador la revisará.
+              </p>
+            ) : !showFlagReasons ? (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setShowFlagReasons(true)}
+              >
+                Algo no cuadra aquí
+              </button>
+            ) : (
+              <div className="stack" style={{ gap: 8 }}>
+                <span className="label">¿Qué pasa con esta necesidad?</span>
+                {FLAG_REASONS.map((reason: FlagReason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    className="btn btn--ghost"
+                    disabled={busy || !user}
+                    onClick={() =>
+                      run(() => flagNeed(need.id, user!.uid, reason))
+                    }
+                  >
+                    {FLAG_LABEL[reason]}
+                  </button>
+                ))}
+                <p className="meta center">
+                  Quien fue al lugar y no encontró nada es la fuente más
+                  confiable que tiene la plataforma.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </section>
     </main>

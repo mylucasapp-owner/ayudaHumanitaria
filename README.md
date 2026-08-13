@@ -18,12 +18,20 @@ Tres roles, un solo flujo:
   una transacción, para que dos personas no gasten recursos en lo mismo. Recién
   ahí se le revela el contacto.
 - **Validador** — coordinador acreditado (ONG, bomberos, junta de vecinos).
-  Confirma que la necesidad es real, libera compromisos que no se concretaron y
-  descarta reportes falsos.
+  Confirma que la necesidad es real, revisa denuncias, libera compromisos que no
+  se concretaron, descarta reportes falsos y bloquea cuentas abusivas.
 
 Un compromiso vence solo. Pasado el plazo la necesidad vuelve al feed sin que
 nadie tenga que intervenir: en una emergencia nadie va a acordarse de liberar un
 ticket.
+
+Quien entrega **no cierra** la necesidad: solo declara la entrega. Confirmar es
+potestad de quien pidió la ayuda o de un validador. Si el oferente pudiera
+cerrar, tomar y "entregar" todo vaciaría el mapa sin repartir nada.
+
+Comprometerse consume un cupo (8 por cada 6 horas) de un registro personal cuyo
+contador solo avanza. Es lo que impide que alguien coseche teléfonos de
+damnificados a escala. El detalle completo está en [SEGURIDAD.md](SEGURIDAD.md).
 
 ## Decisiones de diseño
 
@@ -101,10 +109,11 @@ Y en otra:
 npm run test:rules
 ```
 
-Son 20 casos escritos como situaciones de terreno, no como reglas abstractas:
-que un tercero no vea el teléfono antes de comprometerse, que dos oferentes no
-puedan tomar la misma necesidad, que nadie se autoproclame validador, que nadie
-bloquee una necesidad por un mes, que nadie reescriba la descripción ajena.
+Son 49 casos escritos como situaciones de terreno, no como reglas abstractas:
+que un tercero no vea el teléfono antes de comprometerse, que un cupo de otra
+necesidad no sirva, que el contador de cupos no se pueda saltar, que quien
+entrega no pueda cerrar la necesidad, que nadie se autoproclame validador, y
+que una cuenta bloqueada no pueda publicar ni denunciar.
 
 Para probar la app contra los emuladores en vez de contra producción:
 
@@ -116,10 +125,10 @@ npm run dev:emu
 
 Tres cosas que un despliegue real necesita y este MVP todavía no trae:
 
-1. **App Check** (reCAPTCHA Enterprise). Sin él, cualquiera con la clave web
-   —que viaja al navegador por diseño— puede inundar la base de reportes
-   falsos. Las reglas validan forma y permisos, no volumen. Es lo primero que
-   hay que activar si la plataforma se difunde.
+1. **App Check** (reCAPTCHA Enterprise). Es lo primero. La identidad anónima es
+   gratuita, así que cupos y bloqueos se esquivan creando otra cuenta; App Check
+   es lo que hace cara esa creación. Sin él, las defensas frenan al oportunista
+   pero no al atacante con un script. Ver [SEGURIDAD.md](SEGURIDAD.md).
 2. **Teselas del mapa propias.** El default apunta a
    `tile.openstreetmap.org`, cuya política de uso no cubre picos masivos.
    Configura un proveedor propio antes de un lanzamiento amplio:

@@ -19,6 +19,10 @@ export default function StatusTags({ need }: { need: Need }) {
           </span>
         ))}
 
+      {need.status === "entregada" && (
+        <span className="tag tag--signal">{STATUS_LABEL.entregada}</span>
+      )}
+
       {need.status === "resuelta" && (
         <span className="tag tag--dim">{STATUS_LABEL.resuelta}</span>
       )}

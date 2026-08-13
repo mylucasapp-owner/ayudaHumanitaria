@@ -1,11 +1,21 @@
 rules_version = '2';
 
-// Modelo de confianza:
-// - Cualquiera (incluso anónimo) lee el mapa de necesidades: ese es el producto.
-// - El teléfono NO está en esa lectura pública. Vive en needs/{id}/private/contact
+// Modelo de confianza y defensas antifraude.
+//
+// Supuesto de partida: la identidad es anónima y gratuita, así que TODA defensa
+// atada al uid se esquiva creando otro. Lo que sigue encarece el abuso y lo deja
+// registrado; el corte duro de identidades baratas es App Check, que se activa
+// en la consola y no se puede expresar aquí. Ver SEGURIDAD.md.
+//
+// - El mapa es público para cualquier sesión: ese es el producto.
+// - El teléfono NO está en el documento público. Vive en needs/{id}/private/contact
 //   y solo lo alcanzan el autor, quien tiene el compromiso vigente y los validadores.
-// - Un compromiso es un bloqueo con vencimiento; pasado el plazo cualquiera lo retoma.
-// - Verificar y descartar son potestad exclusiva de los validadores acreditados.
+// - Comprometerse consume un cupo de un registro personal cuyo contador solo
+//   avanza. Sin cupo no hay compromiso, y sin compromiso no hay teléfono.
+// - Quien entrega NO cierra la necesidad. Solo declara la entrega; confirmar es
+//   potestad del solicitante o de un validador. Si no fuera así, tomar y
+//   "entregar" todo vaciaría el mapa.
+// - Verificar, descartar y bloquear son potestad exclusiva de los validadores.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,21 +24,104 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // La acreditación de validador se otorga a mano desde la consola.
-    // Que sea un documento y no un campo del usuario evita que alguien
-    // se autoproclame coordinador.
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // La acreditación se otorga a mano desde la consola. Que sea un documento
+    // y no un campo del usuario evita que alguien se autoproclame coordinador.
     function isValidator() {
       return signedIn() &&
-        exists(/databases/$(database)/documents/validators/$(request.auth.uid));
+        exists(/databases/$(database)/documents/validators/$(uid()));
+    }
+
+    // Expulsión: un validador puede cortarle la escritura a un uid abusivo.
+    // Solo muerde de verdad junto a App Check; sin él, basta con reinstalar.
+    function isBlocked() {
+      return exists(/databases/$(database)/documents/blocked/$(uid()));
+    }
+
+    function canWrite() {
+      return signedIn() && !isBlocked();
     }
 
     function nowMs() {
       return request.time.toMillis();
     }
 
-    match /validators/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
+    match /validators/{vid} {
+      allow read: if signedIn() && uid() == vid;
       allow write: if false; // solo consola / SDK admin
+    }
+
+    match /blocked/{bid} {
+      // El bloqueado puede leer su propio estado para que la app se lo explique.
+      allow read: if signedIn() && (uid() == bid || isValidator());
+      allow create, update: if isValidator();
+      allow delete: if isValidator();
+    }
+
+    // --- Registro personal de compromisos (el cupo) ---
+    //
+    // La unicidad de `slots/{seq}` es todo el mecanismo: para tomar una segunda
+    // necesidad hay que crear slots/1, y crear slots/1 exige que el contador ya
+    // valga 1. Omitir el contador deja al usuario intentando recrear slots/0,
+    // que ya existe. No hay forma de avanzar sin pagar el cupo.
+    match /ledger/{lid} {
+
+      function mine() { return signedIn() && uid() == lid; }
+
+      function windowExpired() {
+        return resource.data.windowStart < request.time - duration.value(6, 'h');
+      }
+
+      allow read: if mine() || isValidator();
+
+      allow create: if canWrite() && uid() == lid &&
+        request.resource.data.keys().hasOnly(['total', 'windowCount', 'windowStart']) &&
+        request.resource.data.total == 1 &&
+        request.resource.data.windowCount == 1 &&
+        request.resource.data.windowStart == request.time;
+
+      allow update: if canWrite() && uid() == lid &&
+        request.resource.data.keys().hasOnly(['total', 'windowCount', 'windowStart']) &&
+        // El total nunca retrocede: es la posición del próximo cupo.
+        request.resource.data.total == resource.data.total + 1 &&
+        (
+          // Dentro de la ventana: se consume cupo hasta el tope.
+          (!windowExpired() &&
+           request.resource.data.windowStart == resource.data.windowStart &&
+           request.resource.data.windowCount == resource.data.windowCount + 1 &&
+           request.resource.data.windowCount <= 8)
+          ||
+          // Ventana vencida: empieza una nueva. La marca la pone el servidor,
+          // así que un reloj adelantado no compra cupo extra.
+          (windowExpired() &&
+           request.resource.data.windowStart == request.time &&
+           request.resource.data.windowCount == 1)
+        );
+
+      allow delete: if false;
+
+      match /slots/{seq} {
+        function ledgerTotal() {
+          return exists(/databases/$(database)/documents/ledger/$(lid))
+            ? get(/databases/$(database)/documents/ledger/$(lid)).data.total
+            : 0;
+        }
+
+        allow read: if (signedIn() && uid() == lid) || isValidator();
+
+        allow create: if canWrite() && uid() == lid &&
+          request.resource.data.keys().hasOnly(['needId', 'at']) &&
+          request.resource.data.needId is string &&
+          request.resource.data.at == request.time &&
+          // La posición debe ser exactamente la siguiente libre.
+          int(seq) == ledgerTotal();
+
+        // Inmutable: es la bitácora de a qué damnificados accedió cada persona.
+        allow update, delete: if false;
+      }
     }
 
     match /needs/{needId} {
@@ -44,23 +137,31 @@ service cloud.firestore {
         );
       }
 
+      // El cupo se prueba señalando un slot ya creado cuyo needId coincide.
+      // Reclamar otra necesidad exige otro slot, y cada slot cuesta contador.
+      function holdsSlotFor(seq) {
+        return exists(/databases/$(database)/documents/ledger/$(uid())/slots/$(string(seq))) &&
+          get(/databases/$(database)/documents/ledger/$(uid())/slots/$(string(seq))).data.needId == needId;
+      }
+
       function validClaim(c) {
-        return c.keys().hasOnly(['uid', 'name', 'expiresAt', 'at']) &&
-          c.uid == request.auth.uid &&
+        return c.keys().hasOnly(['uid', 'name', 'expiresAt', 'at', 'seq']) &&
+          c.uid == uid() &&
           c.name is string && c.name.size() > 0 && c.name.size() <= 60 &&
           c.expiresAt is number &&
           // Solo techo, no piso: `expiresAt` lo calcula el reloj del teléfono, y
           // tras un corte largo esos relojes se desfasan. Un vencimiento ya
-          // pasado no es un riesgo (la necesidad vuelve al feed de inmediato);
+          // pasado no es riesgo (la necesidad vuelve al feed de inmediato);
           // lo que hay que impedir es un bloqueo eterno.
           c.expiresAt <= nowMs() + 12 * 60 * 60 * 1000 &&
-          c.at == request.time;
+          c.at == request.time &&
+          c.seq is int &&
+          (isValidator() || holdsSlotFor(c.seq));
       }
 
-      function isOwner()   { return signedIn() && current().ownerUid == request.auth.uid; }
+      function isOwner()   { return signedIn() && current().ownerUid == uid(); }
       function isClaimer() {
-        return signedIn() && current().claim != null &&
-               current().claim.uid == request.auth.uid;
+        return signedIn() && current().claim != null && current().claim.uid == uid();
       }
       function claimExpired() {
         return current().claim != null && current().claim.expiresAt <= nowMs();
@@ -70,7 +171,7 @@ service cloud.firestore {
                (current().status == 'comprometida' && claimExpired());
       }
 
-      // Nadie puede reescribir el hecho reportado: solo su ciclo de vida.
+      // Nadie reescribe el hecho reportado: solo su ciclo de vida.
       function coreUnchanged() {
         return incoming().category    == current().category &&
                incoming().description == current().description &&
@@ -83,13 +184,14 @@ service cloud.firestore {
                incoming().keys().hasOnly([
                  'category', 'description', 'reference', 'location', 'peopleCount',
                  'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
-                 'claim', 'createdAt', 'updatedAt'
+                 'verifiedByUid', 'claim', 'createdAt', 'updatedAt'
                ]);
       }
 
       function verificationUnchanged() {
         return incoming().verified       == current().verified &&
-               incoming().verifiedByName == current().verifiedByName;
+               incoming().verifiedByName == current().verifiedByName &&
+               incoming().verifiedByUid  == current().verifiedByUid;
       }
 
       function claimUnchanged() {
@@ -98,7 +200,7 @@ service cloud.firestore {
 
       // --- Acciones permitidas ---
 
-      // Tomar una necesidad libre (o una cuyo compromiso venció).
+      // Tomar una necesidad libre, o una cuyo compromiso venció.
       function takeAction() {
         return incoming().status == 'comprometida' &&
                incoming().active == true &&
@@ -116,13 +218,24 @@ service cloud.firestore {
                (isClaimer() || isOwner() || isValidator() || claimExpired());
       }
 
-      // Cerrar el ciclo: la ayuda llegó.
+      // El oferente declara la entrega. Deliberadamente NO cierra: deja la
+      // necesidad a la vista, esperando confirmación de quien la pidió.
+      function deliverAction() {
+        return incoming().status == 'entregada' &&
+               incoming().active == true &&
+               current().status == 'comprometida' &&
+               isClaimer() &&
+               claimUnchanged() &&
+               verificationUnchanged();
+      }
+
+      // Cerrar el ciclo. Solo quien recibió la ayuda o un validador.
       function resolveAction() {
         return incoming().status == 'resuelta' &&
                incoming().active == false &&
                claimUnchanged() &&
                verificationUnchanged() &&
-               (isOwner() || isClaimer() || isValidator());
+               (isOwner() || isValidator());
       }
 
       // Confirmación en terreno.
@@ -131,6 +244,7 @@ service cloud.firestore {
                incoming().verified == true &&
                incoming().verifiedByName is string &&
                incoming().verifiedByName.size() <= 60 &&
+               incoming().verifiedByUid == uid() &&
                incoming().status == current().status &&
                incoming().active == current().active &&
                claimUnchanged();
@@ -146,11 +260,11 @@ service cloud.firestore {
 
       allow read: if signedIn();
 
-      allow create: if signedIn() &&
+      allow create: if canWrite() &&
         incoming().keys().hasOnly([
           'category', 'description', 'reference', 'location', 'peopleCount',
           'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
-          'claim', 'createdAt', 'updatedAt'
+          'verifiedByUid', 'claim', 'createdAt', 'updatedAt'
         ]) &&
         incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte'] &&
         incoming().description is string &&
@@ -161,35 +275,57 @@ service cloud.firestore {
         incoming().peopleCount >= 1 && incoming().peopleCount <= 999 &&
         incoming().status == 'abierta' &&
         incoming().active == true &&
-        incoming().ownerUid == request.auth.uid &&
+        incoming().ownerUid == uid() &&
         incoming().verified == false &&
         incoming().verifiedByName == null &&
+        incoming().verifiedByUid == null &&
         incoming().claim == null &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
 
-      allow update: if signedIn() && coreUnchanged() && (
-        takeAction() || releaseAction() || resolveAction() ||
-        verifyAction() || discardAction()
+      allow update: if canWrite() && coreUnchanged() && (
+        takeAction() || releaseAction() || deliverAction() ||
+        resolveAction() || verifyAction() || discardAction()
       );
 
       // Nada se borra: el histórico es la auditoría de la emergencia.
       allow delete: if false;
 
+      // --- Denuncias de la comunidad ---
+      //
+      // Un documento por persona y necesidad: la ruta impide que un mismo uid
+      // infle el conteo. Es la señal más barata para que un validador sepa
+      // dónde mirar primero.
+      match /flags/{flagUid} {
+        allow read: if isValidator() || (signedIn() && uid() == flagUid);
+
+        allow create: if canWrite() && uid() == flagUid &&
+          request.resource.data.keys().hasOnly(['needId', 'uid', 'reason', 'at']) &&
+          request.resource.data.needId == needId &&
+          request.resource.data.uid == uid() &&
+          request.resource.data.reason in
+            ['duplicada', 'no-existe', 'datos-falsos', 'ya-resuelta', 'estafa'] &&
+          request.resource.data.at == request.time;
+
+        allow update, delete: if false;
+      }
+
       match /private/contact {
 
-        // Lee el contacto quien tiene una razón operativa para llamar.
         function needData() {
           return get(/databases/$(database)/documents/needs/$(needId)).data;
         }
         function isActiveClaimer() {
           return needData().claim != null &&
-                 needData().claim.uid == request.auth.uid &&
+                 needData().claim.uid == uid() &&
                  needData().claim.expiresAt > nowMs();
         }
 
+        // Quien lee el teléfono tuvo que gastar un cupo para llegar aquí, y ese
+        // gasto quedó anotado en su ledger. La bitácora de accesos existe
+        // aunque nadie la mire: sin ella no habría cómo investigar una fuga.
         allow read: if signedIn() && (
-          resource.data.ownerUid == request.auth.uid ||
+          resource.data.ownerUid == uid() ||
           isValidator() ||
           isActiveClaimer()
         );
@@ -197,21 +333,21 @@ service cloud.firestore {
         // Se crea junto con la necesidad, en el mismo lote. Las reglas evalúan
         // cada escritura contra el estado previo, así que en ese instante la
         // necesidad todavía "no existe": por eso la autoría se valida con el
-        // campo del propio documento, y el exists() bloquea a un tercero
-        // que quisiera ocupar el hueco más tarde.
-        allow create: if signedIn() &&
+        // campo del propio documento, y el exists() bloquea a un tercero que
+        // quisiera ocupar el hueco más tarde.
+        allow create: if canWrite() &&
           request.resource.data.keys().hasOnly(['name', 'phone', 'ownerUid']) &&
-          request.resource.data.ownerUid == request.auth.uid &&
+          request.resource.data.ownerUid == uid() &&
           request.resource.data.name is string &&
           request.resource.data.name.size() <= 60 &&
           request.resource.data.phone is string &&
           request.resource.data.phone.size() >= 6 &&
           request.resource.data.phone.size() <= 25 &&
           (!exists(/databases/$(database)/documents/needs/$(needId)) ||
-           needData().ownerUid == request.auth.uid);
+           needData().ownerUid == uid());
 
-        allow update: if signedIn() &&
-          resource.data.ownerUid == request.auth.uid &&
+        allow update: if canWrite() &&
+          resource.data.ownerUid == uid() &&
           request.resource.data.ownerUid == resource.data.ownerUid &&
           request.resource.data.keys().hasOnly(['name', 'phone', 'ownerUid']) &&
           request.resource.data.phone is string &&
@@ -220,6 +356,12 @@ service cloud.firestore {
 
         allow delete: if false;
       }
+    }
+
+    // Consulta de grupo para que el panel de validación vea todas las denuncias
+    // sin recorrer necesidad por necesidad.
+    match /{path=**}/flags/{flagUid} {
+      allow read: if isValidator();
     }
   }
 }

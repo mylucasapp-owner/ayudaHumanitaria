@@ -550,6 +550,18 @@ a {
   text-align: center;
 }
 
+/* Tres métricas de igual ancho: los rótulos largos parten línea sin desbordar. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stats .label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
 .empty {
   border: 2px dashed var(--line);
   padding: 28px 16px;

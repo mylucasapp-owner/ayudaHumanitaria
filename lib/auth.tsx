@@ -24,6 +24,8 @@ type AuthState = {
   user: User | null;
   /** null mientras no se sabe; luego el perfil o `false` si no es validador. */
   validator: Validator | null;
+  /** Cuenta expulsada por un validador: puede leer, no escribir. */
+  blocked: boolean;
   loading: boolean;
   error: string | null;
 };
@@ -31,6 +33,7 @@ type AuthState = {
 const Ctx = createContext<AuthState>({
   user: null,
   validator: null,
+  blocked: false,
   loading: true,
   error: null,
 });
@@ -38,6 +41,7 @@ const Ctx = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [validator, setValidator] = useState<Validator | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,9 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }, [user]);
 
+  // Una cuenta expulsada merece saberlo: si no, ve fallos sin explicación y
+  // vuelve a intentar, o cree que la app está rota.
+  useEffect(() => {
+    if (!user) {
+      setBlocked(false);
+      return;
+    }
+    return onSnapshot(
+      doc(db(), "blocked", user.uid),
+      (snap) => setBlocked(snap.exists()),
+      () => setBlocked(false),
+    );
+  }, [user]);
+
   const value = useMemo(
-    () => ({ user, validator, loading, error }),
-    [user, validator, loading, error],
+    () => ({ user, validator, blocked, loading, error }),
+    [user, validator, blocked, loading, error],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
