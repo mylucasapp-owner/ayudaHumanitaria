@@ -460,8 +460,10 @@ a {
   height: 240px;
 }
 
-/* Tiles en escala de grises invertida: mapa oscuro sin servidor de estilos. */
-.map .leaflet-tile-pane {
+/* Rescate para proveedores que solo ofrecen mapa claro: lo invierte para que
+   no queme la vista ni la batería. No debe aplicarse a un estilo ya oscuro,
+   porque lo devolvería a blanco. Se activa con NEXT_PUBLIC_TILE_DARK_FILTER=1. */
+.map--invertido .leaflet-tile-pane {
   filter: grayscale(1) invert(1) brightness(0.85) contrast(1.15);
 }
 

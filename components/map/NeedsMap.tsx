@@ -9,6 +9,7 @@ import {
   FALLBACK_CENTER,
   FALLBACK_ZOOM,
   TILE_MAX_ZOOM,
+  mapClass,
 } from "./tiles";
 import { CATEGORY_GLYPH, isClaimExpired, type GeoPoint, type Need } from "@/lib/types";
 
@@ -150,7 +151,7 @@ export default function NeedsMap({
   return (
     <div className="map-wrap">
       <div
-        className="map"
+        className={mapClass("map")}
         ref={holder}
         role="application"
         aria-label="Mapa de necesidades"

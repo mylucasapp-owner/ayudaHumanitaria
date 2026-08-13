@@ -28,6 +28,17 @@ export const TILE_ATTRIBUTION =
 export const TILE_MAX_ZOOM = Number(process.env.NEXT_PUBLIC_TILE_MAX_ZOOM ?? 17);
 
 /**
+ * Invertir las teselas por CSS solo tiene sentido si el proveedor entrega mapa
+ * claro. Aplicarlo sobre un estilo ya oscuro lo devuelve a blanco, que es justo
+ * lo que la app evita: reflejo al sol y batería de más.
+ */
+export const TILE_INVERT = process.env.NEXT_PUBLIC_TILE_DARK_FILTER === "1";
+
+/** Clase del contenedor del mapa según haga falta invertir o no. */
+export const mapClass = (base: string) =>
+  TILE_INVERT ? `${base} map--invertido` : base;
+
+/**
  * Centro por defecto cuando aún no hay GPS ni necesidades ubicadas.
  * Se cambia por variables de entorno al desplegar en otra emergencia.
  */

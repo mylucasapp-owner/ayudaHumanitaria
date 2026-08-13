@@ -8,6 +8,7 @@ import {
   TILE_URL,
   FALLBACK_CENTER,
   TILE_MAX_ZOOM,
+  mapClass,
 } from "./tiles";
 import type { GeoPoint } from "@/lib/types";
 
@@ -94,7 +95,7 @@ export default function PointPicker({
   return (
     <div className="map-wrap">
       <div
-        className="map map--picker"
+        className={mapClass("map map--picker")}
         ref={holder}
         role="application"
         aria-label="Toca el mapa para marcar la ubicación"
