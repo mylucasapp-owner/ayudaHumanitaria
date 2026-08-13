@@ -1,0 +1,225 @@
+rules_version = '2';
+
+// Modelo de confianza:
+// - Cualquiera (incluso anónimo) lee el mapa de necesidades: ese es el producto.
+// - El teléfono NO está en esa lectura pública. Vive en needs/{id}/private/contact
+//   y solo lo alcanzan el autor, quien tiene el compromiso vigente y los validadores.
+// - Un compromiso es un bloqueo con vencimiento; pasado el plazo cualquiera lo retoma.
+// - Verificar y descartar son potestad exclusiva de los validadores acreditados.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // La acreditación de validador se otorga a mano desde la consola.
+    // Que sea un documento y no un campo del usuario evita que alguien
+    // se autoproclame coordinador.
+    function isValidator() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/validators/$(request.auth.uid));
+    }
+
+    function nowMs() {
+      return request.time.toMillis();
+    }
+
+    match /validators/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false; // solo consola / SDK admin
+    }
+
+    match /needs/{needId} {
+
+      function incoming() { return request.resource.data; }
+      function current()  { return resource.data; }
+
+      function validLocation(loc) {
+        return loc == null || (
+          loc.keys().hasOnly(['lat', 'lng']) &&
+          loc.lat is number && loc.lat >= -90  && loc.lat <= 90 &&
+          loc.lng is number && loc.lng >= -180 && loc.lng <= 180
+        );
+      }
+
+      function validClaim(c) {
+        return c.keys().hasOnly(['uid', 'name', 'expiresAt', 'at']) &&
+          c.uid == request.auth.uid &&
+          c.name is string && c.name.size() > 0 && c.name.size() <= 60 &&
+          c.expiresAt is number &&
+          // Solo techo, no piso: `expiresAt` lo calcula el reloj del teléfono, y
+          // tras un corte largo esos relojes se desfasan. Un vencimiento ya
+          // pasado no es un riesgo (la necesidad vuelve al feed de inmediato);
+          // lo que hay que impedir es un bloqueo eterno.
+          c.expiresAt <= nowMs() + 12 * 60 * 60 * 1000 &&
+          c.at == request.time;
+      }
+
+      function isOwner()   { return signedIn() && current().ownerUid == request.auth.uid; }
+      function isClaimer() {
+        return signedIn() && current().claim != null &&
+               current().claim.uid == request.auth.uid;
+      }
+      function claimExpired() {
+        return current().claim != null && current().claim.expiresAt <= nowMs();
+      }
+      function isOpen() {
+        return current().status == 'abierta' ||
+               (current().status == 'comprometida' && claimExpired());
+      }
+
+      // Nadie puede reescribir el hecho reportado: solo su ciclo de vida.
+      function coreUnchanged() {
+        return incoming().category    == current().category &&
+               incoming().description == current().description &&
+               incoming().reference   == current().reference &&
+               incoming().location    == current().location &&
+               incoming().peopleCount == current().peopleCount &&
+               incoming().ownerUid    == current().ownerUid &&
+               incoming().createdAt   == current().createdAt &&
+               incoming().updatedAt   == request.time &&
+               incoming().keys().hasOnly([
+                 'category', 'description', 'reference', 'location', 'peopleCount',
+                 'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
+                 'claim', 'createdAt', 'updatedAt'
+               ]);
+      }
+
+      function verificationUnchanged() {
+        return incoming().verified       == current().verified &&
+               incoming().verifiedByName == current().verifiedByName;
+      }
+
+      function claimUnchanged() {
+        return incoming().claim == current().claim;
+      }
+
+      // --- Acciones permitidas ---
+
+      // Tomar una necesidad libre (o una cuyo compromiso venció).
+      function takeAction() {
+        return incoming().status == 'comprometida' &&
+               incoming().active == true &&
+               isOpen() &&
+               validClaim(incoming().claim) &&
+               verificationUnchanged();
+      }
+
+      // Devolverla al feed.
+      function releaseAction() {
+        return incoming().status == 'abierta' &&
+               incoming().active == true &&
+               incoming().claim == null &&
+               verificationUnchanged() &&
+               (isClaimer() || isOwner() || isValidator() || claimExpired());
+      }
+
+      // Cerrar el ciclo: la ayuda llegó.
+      function resolveAction() {
+        return incoming().status == 'resuelta' &&
+               incoming().active == false &&
+               claimUnchanged() &&
+               verificationUnchanged() &&
+               (isOwner() || isClaimer() || isValidator());
+      }
+
+      // Confirmación en terreno.
+      function verifyAction() {
+        return isValidator() &&
+               incoming().verified == true &&
+               incoming().verifiedByName is string &&
+               incoming().verifiedByName.size() <= 60 &&
+               incoming().status == current().status &&
+               incoming().active == current().active &&
+               claimUnchanged();
+      }
+
+      // Reporte que no pudo confirmarse.
+      function discardAction() {
+        return isValidator() &&
+               incoming().status == 'falsa' &&
+               incoming().active == false &&
+               claimUnchanged();
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() &&
+        incoming().keys().hasOnly([
+          'category', 'description', 'reference', 'location', 'peopleCount',
+          'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
+          'claim', 'createdAt', 'updatedAt'
+        ]) &&
+        incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte'] &&
+        incoming().description is string &&
+        incoming().description.size() > 0 && incoming().description.size() <= 140 &&
+        incoming().reference is string && incoming().reference.size() <= 120 &&
+        validLocation(incoming().location) &&
+        incoming().peopleCount is int &&
+        incoming().peopleCount >= 1 && incoming().peopleCount <= 999 &&
+        incoming().status == 'abierta' &&
+        incoming().active == true &&
+        incoming().ownerUid == request.auth.uid &&
+        incoming().verified == false &&
+        incoming().verifiedByName == null &&
+        incoming().claim == null &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if signedIn() && coreUnchanged() && (
+        takeAction() || releaseAction() || resolveAction() ||
+        verifyAction() || discardAction()
+      );
+
+      // Nada se borra: el histórico es la auditoría de la emergencia.
+      allow delete: if false;
+
+      match /private/contact {
+
+        // Lee el contacto quien tiene una razón operativa para llamar.
+        function needData() {
+          return get(/databases/$(database)/documents/needs/$(needId)).data;
+        }
+        function isActiveClaimer() {
+          return needData().claim != null &&
+                 needData().claim.uid == request.auth.uid &&
+                 needData().claim.expiresAt > nowMs();
+        }
+
+        allow read: if signedIn() && (
+          resource.data.ownerUid == request.auth.uid ||
+          isValidator() ||
+          isActiveClaimer()
+        );
+
+        // Se crea junto con la necesidad, en el mismo lote. Las reglas evalúan
+        // cada escritura contra el estado previo, así que en ese instante la
+        // necesidad todavía "no existe": por eso la autoría se valida con el
+        // campo del propio documento, y el exists() bloquea a un tercero
+        // que quisiera ocupar el hueco más tarde.
+        allow create: if signedIn() &&
+          request.resource.data.keys().hasOnly(['name', 'phone', 'ownerUid']) &&
+          request.resource.data.ownerUid == request.auth.uid &&
+          request.resource.data.name is string &&
+          request.resource.data.name.size() <= 60 &&
+          request.resource.data.phone is string &&
+          request.resource.data.phone.size() >= 6 &&
+          request.resource.data.phone.size() <= 25 &&
+          (!exists(/databases/$(database)/documents/needs/$(needId)) ||
+           needData().ownerUid == request.auth.uid);
+
+        allow update: if signedIn() &&
+          resource.data.ownerUid == request.auth.uid &&
+          request.resource.data.ownerUid == resource.data.ownerUid &&
+          request.resource.data.keys().hasOnly(['name', 'phone', 'ownerUid']) &&
+          request.resource.data.phone is string &&
+          request.resource.data.phone.size() >= 6 &&
+          request.resource.data.phone.size() <= 25;
+
+        allow delete: if false;
+      }
+    }
+  }
+}

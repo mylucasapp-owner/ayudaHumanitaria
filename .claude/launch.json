@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ayuda-humanitaria",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "ayuda-humanitaria-emu",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:emu"],
+      "port": 3001
+    }
+  ]
+}

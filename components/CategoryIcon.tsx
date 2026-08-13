@@ -1,0 +1,65 @@
+import type { Category } from "@/lib/types";
+
+/**
+ * Íconos de trazo, sin relleno ni detalle: legibles a 20px y a 48px, y
+ * heredan el color para funcionar igual sobre negro o sobre blanco.
+ */
+const PATHS: Record<Category, React.ReactNode> = {
+  medico: (
+    <>
+      <path d="M12 4v16M4 12h16" />
+    </>
+  ),
+  rescate: (
+    <>
+      <path d="M12 3 2 20h20L12 3Z" />
+      <path d="M12 10v4" />
+      <path d="M12 17h.01" />
+    </>
+  ),
+  agua: (
+    <>
+      <path d="M12 3s6 6.5 6 10.5A6 6 0 0 1 6 13.5C6 9.5 12 3 12 3Z" />
+    </>
+  ),
+  refugio: (
+    <>
+      <path d="M3 11 12 4l9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-5h4v5" />
+    </>
+  ),
+  transporte: (
+    <>
+      <path d="M2 8h11v9H2z" />
+      <path d="M13 11h4l4 3.5V17h-8" />
+      <circle cx="7" cy="18.5" r="2" />
+      <circle cx="17" cy="18.5" r="2" />
+    </>
+  ),
+};
+
+export default function CategoryIcon({
+  category,
+  size = 44,
+}: {
+  category: Category;
+  size?: number;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {PATHS[category]}
+    </svg>
+  );
+}

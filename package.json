@@ -1,0 +1,30 @@
+{
+  "name": "ayuda-humanitaria",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:emu": "NEXT_PUBLIC_USE_EMULATORS=1 next dev --port 3001",
+    "emulators": "firebase emulators:start --only auth,firestore",
+    "test:rules": "node scripts/test-rules.mjs",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/make-icons.mjs",
+    "deploy": "next build && firebase deploy"
+  },
+  "dependencies": {
+    "firebase": "^11.0.0",
+    "leaflet": "^1.9.4",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.12",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}
