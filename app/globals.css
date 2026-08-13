@@ -550,6 +550,27 @@ a {
   text-align: center;
 }
 
+/* El aviso se superpone al mapa en vez de empujarlo: mover el layout cuando
+   fallan las teselas desplazaría lo que el usuario estaba tocando. */
+.map-wrap {
+  position: relative;
+}
+
+.map-aviso {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 500;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--signal);
+  background: rgba(0, 0, 0, 0.88);
+  border: 1px solid var(--signal);
+}
+
 /* Tres métricas de igual ancho: los rótulos largos parten línea sin desbordar. */
 .stats {
   display: grid;

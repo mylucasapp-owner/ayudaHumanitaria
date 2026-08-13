@@ -1,7 +1,12 @@
 /**
  * Fuente de teselas. Por defecto OpenStreetMap (sin llave, disponible en
  * minutos). Para operaciones de alto tráfico, define la variable de entorno
- * con un proveedor propio: la política de uso de OSM no cubre picos masivos.
+ * con un proveedor propio: la política de uso de OSM no cubre picos masivos y
+ * el bloqueo, cuando llega, es silencioso.
+ *
+ * El proveedor debe enviar cabeceras CORS. Sin ellas Leaflet ni siquiera pinta
+ * la tesela —se piden con `crossOrigin`— y el service worker no puede
+ * guardarlas, que es lo que sostiene el mapa sin señal.
  */
 export const TILE_URL =
   process.env.NEXT_PUBLIC_TILE_URL ||
@@ -9,6 +14,13 @@ export const TILE_URL =
 
 export const TILE_ATTRIBUTION =
   process.env.NEXT_PUBLIC_TILE_ATTRIBUTION || "&copy; OpenStreetMap";
+
+/**
+ * Cada nivel de zoom cuadruplica las teselas posibles. El 17 ya muestra calles
+ * con número; pasar de ahí multiplica el tráfico —y el riesgo de bloqueo— sin
+ * aportar nada para ubicar una casa.
+ */
+export const TILE_MAX_ZOOM = Number(process.env.NEXT_PUBLIC_TILE_MAX_ZOOM ?? 17);
 
 /**
  * Centro por defecto cuando aún no hay GPS ni necesidades ubicadas.

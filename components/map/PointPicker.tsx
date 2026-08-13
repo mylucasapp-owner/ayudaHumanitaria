@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { TILE_ATTRIBUTION, TILE_URL, FALLBACK_CENTER } from "./tiles";
+import {
+  TILE_ATTRIBUTION,
+  TILE_URL,
+  FALLBACK_CENTER,
+  TILE_MAX_ZOOM,
+} from "./tiles";
 import type { GeoPoint } from "@/lib/types";
 
 /**
@@ -23,6 +28,7 @@ export default function PointPicker({
   const marker = useRef<L.Marker | null>(null);
   const change = useRef(onChange);
   change.current = onChange;
+  const [sinTeselas, setSinTeselas] = useState(false);
 
   useEffect(() => {
     if (!holder.current || map.current) return;
@@ -31,11 +37,21 @@ export default function PointPicker({
       center: [start.lat, start.lng],
       zoom: value ? 16 : 12,
     });
-    L.tileLayer(TILE_URL, {
+    const capa = L.tileLayer(TILE_URL, {
       attribution: TILE_ATTRIBUTION,
-      maxZoom: 19,
+      maxZoom: TILE_MAX_ZOOM,
       crossOrigin: true,
     }).addTo(m);
+
+    // Aquí el fondo importa más que en el otro mapa: sin calles de referencia
+    // nadie puede señalar su casa. El punto se sigue pudiendo marcar, pero hay
+    // que empujar a escribir una referencia, que es lo que salva el reporte.
+    let fallos = 0;
+    capa.on("tileerror", () => {
+      fallos++;
+      if (fallos >= 4) setSinTeselas(true);
+    });
+    capa.on("tileload", () => setSinTeselas(false));
     m.on("click", (e: L.LeafletMouseEvent) =>
       change.current({ lat: e.latlng.lat, lng: e.latlng.lng }),
     );
@@ -76,11 +92,19 @@ export default function PointPicker({
   }, [value]);
 
   return (
-    <div
-      className="map map--picker"
-      ref={holder}
-      role="application"
-      aria-label="Toca el mapa para marcar la ubicación"
-    />
+    <div className="map-wrap">
+      <div
+        className="map map--picker"
+        ref={holder}
+        role="application"
+        aria-label="Toca el mapa para marcar la ubicación"
+      />
+      {sinTeselas && (
+        <p className="map-aviso" role="status">
+          El fondo del mapa no cargó. Escribe abajo una referencia del lugar —una
+          calle, una esquina, algo que se vea— para que puedan encontrarte.
+        </p>
+      )}
+    </div>
   );
 }

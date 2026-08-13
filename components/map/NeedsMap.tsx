@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -8,6 +8,7 @@ import {
   TILE_URL,
   FALLBACK_CENTER,
   FALLBACK_ZOOM,
+  TILE_MAX_ZOOM,
 } from "./tiles";
 import { CATEGORY_GLYPH, isClaimExpired, type GeoPoint, type Need } from "@/lib/types";
 
@@ -42,6 +43,7 @@ export default function NeedsMap({
   const fitted = useRef(false);
   const select = useRef(onSelect);
   select.current = onSelect;
+  const [sinTeselas, setSinTeselas] = useState(false);
 
   useEffect(() => {
     if (!holder.current || map.current) return;
@@ -51,11 +53,22 @@ export default function NeedsMap({
       zoomControl: true,
       attributionControl: true,
     });
-    L.tileLayer(TILE_URL, {
+    const capa = L.tileLayer(TILE_URL, {
       attribution: TILE_ATTRIBUTION,
-      maxZoom: 19,
+      maxZoom: TILE_MAX_ZOOM,
       crossOrigin: true,
     }).addTo(m);
+
+    // Que el fondo no cargue deja rectángulos grises y la sensación de que la
+    // app se rompió. Los marcadores siguen siendo correctos, así que se dice
+    // qué pasó y se apunta a la lista, que no depende de ningún proveedor.
+    let fallos = 0;
+    capa.on("tileerror", () => {
+      fallos++;
+      if (fallos >= 4) setSinTeselas(true);
+    });
+    capa.on("tileload", () => setSinTeselas(false));
+
     map.current = m;
     // El contenedor a veces mide 0 en el primer pintado dentro de un flex.
     setTimeout(() => m.invalidateSize(), 50);
@@ -134,5 +147,20 @@ export default function NeedsMap({
     }
   }, [me]);
 
-  return <div className="map" ref={holder} role="application" aria-label="Mapa de necesidades" />;
+  return (
+    <div className="map-wrap">
+      <div
+        className="map"
+        ref={holder}
+        role="application"
+        aria-label="Mapa de necesidades"
+      />
+      {sinTeselas && (
+        <p className="map-aviso" role="status">
+          El fondo del mapa no cargó. Los puntos siguen siendo correctos; si no
+          los ves bien, usa la vista de lista.
+        </p>
+      )}
+    </div>
+  );
 }
