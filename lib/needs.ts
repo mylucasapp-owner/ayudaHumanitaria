@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
+import { distanceKm } from "./geo";
 import { zoneOf } from "./zones";
 import {
   CLAIM_LIMIT_PER_WINDOW,
@@ -244,6 +245,48 @@ export function subscribeToOpenNeeds(
     (snap) => onData(snap.docs.map(toNeed)),
     onError,
   );
+}
+
+/** Radio dentro del cual dos pedidos de la misma categoría son sospechosos. */
+const DUPLICATE_RADIUS_KM = 0.4;
+
+/**
+ * Busca necesidades parecidas ya publicadas cerca del punto indicado.
+ *
+ * Los duplicados no son mala fe: son varias personas de una misma cuadra
+ * reportando lo mismo, o alguien que reintentó creyendo que no se envió. El
+ * costo lo pagan los validadores, que se ahogan revisando lo mismo tres veces.
+ *
+ * Es solo un aviso. Dos familias vecinas pueden necesitar de verdad lo mismo, y
+ * frenar a quien está pidiendo ayuda sería mucho peor que tolerar repetidos.
+ */
+export async function findSimilarNeeds(
+  location: GeoPoint,
+  category: Category,
+): Promise<Need[]> {
+  try {
+    const zona = zoneOf(location)?.id ?? "otra";
+    const snap = await getDocs(
+      query(
+        needsCol(),
+        where("active", "==", true),
+        where("zone", "==", zona),
+        orderBy("createdAt", "desc"),
+        limit(60),
+      ),
+    );
+    return snap.docs
+      .map(toNeed)
+      .filter(
+        (n) =>
+          n.category === category &&
+          n.location != null &&
+          distanceKm(location, n.location) <= DUPLICATE_RADIUS_KM,
+      );
+  } catch {
+    // Sin señal o sin índice no se avisa nada: es una ayuda, no un requisito.
+    return [];
+  }
 }
 
 export function subscribeToMyNeeds(

@@ -51,8 +51,11 @@ damnificados a escala. El detalle completo está en [SEGURIDAD.md](SEGURIDAD.md)
   la última vista conocida, y lo que se escriba se encola y sale al reconectar.
 - **Sin fuentes web ni imágenes.** Cada byte cuenta; los íconos son SVG de trazo
   generados en el bundle y el logo es un PNG de 686 bytes.
-- **Leaflet + OpenStreetMap.** Sin llave de API ni tarjeta de crédito, así que se
-  levanta en minutos. Ver la advertencia de teselas más abajo.
+- **Leaflet + Stadia Maps, estilo oscuro.** Autenticado por dominio, sin llave
+  en el bundle. El estilo oscuro no es estética: un mapa blanco es la superficie
+  que más batería consume y la que peor se lee bajo el sol, justo lo que el
+  diseño negro quiere evitar. El service worker guarda las teselas ya vistas, de
+  modo que el mapa sigue sirviendo sin señal en las zonas visitadas.
 
 ## Puesta en marcha
 
@@ -62,32 +65,26 @@ npm install
 
 Si npm se queda colgado, ver *IPv6* al final.
 
-### 1. Consola de Firebase
+### 1. Configuración
 
-En el proyecto `ayuda-humanitaria-89e72`:
+Copia `.env.example` a `.env.local` y complétalo. Las variables `NEXT_PUBLIC_*`
+viajan al navegador por diseño; la seguridad real vive en `firestore.rules`.
 
-1. **Firestore Database** → crear base de datos (modo producción, región
-   cercana a la zona afectada).
-2. **Authentication** → *Sign-in method* → habilitar **Anónimo** (obligatorio:
-   toda la app depende de él) y **Correo/contraseña** (para los validadores).
-
-### 2. Reglas e índices
+### 2. Reglas, índices y funciones
 
 ```bash
-firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only firestore:rules,firestore:indexes,functions
 ```
 
 ### 3. Acreditar validadores
 
-Un validador es una cuenta de correo con un documento que lo respalda. No hay
-forma de autoproclamarse: el documento solo se crea desde la consola.
+```bash
+node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Cali" coordinacion@ong.org
+```
 
-1. **Authentication** → *Add user* con correo y contraseña. Copia el UID.
-2. **Firestore** → colección `validators` → documento con ese UID exacto:
-   ```
-   name: "Bomberos 3ª Compañía"
-   zone: "Sector Norte"
-   ```
+Crea la cuenta, la acredita y envía un correo para que definan su contraseña.
+Ningún cliente puede crear el documento que otorga el rol. Detalle y criterios
+en [LANZAMIENTO.md](LANZAMIENTO.md).
 
 ### 4. Desarrollo y despliegue
 
@@ -105,10 +102,10 @@ npm run deploy
 npm test
 ```
 
-Levanta los emuladores, corre las 46 pruebas y los apaga. No necesita
+Levanta los emuladores, corre las 65 pruebas y los apaga. No necesita
 dependencias extra: usa el runner de Node.
 
-Tres capas:
+Cinco capas:
 
 - **`tests/unit.test.mjs`** — lógica pura: distancias, formatos de tiempo, y
   comprobaciones de que el código y `firestore.rules` no se desincronicen
@@ -118,6 +115,10 @@ Tres capas:
   se entrega, se confirma; se abandona y otro retoma; se denuncia y se descarta.
 - **`tests/rules.test.mjs`** — lo que la app nunca enviaría y un atacante sí:
   campos fuera de rango, escalada de privilegios, manipulación del ledger.
+- **`tests/offline.test.mjs`** — el camino sin señal: que reportar no se cuelgue,
+  que lo encolado llegue al reconectar, y que lo que exige red lo diga claro.
+- **`tests/recovery.test.mjs`** — recuperar un reporte cuando el dispositivo
+  perdió su identidad, y que el código no sirva para robar reportes ajenos.
 
 Solo la capa pura, sin emuladores:
 
@@ -131,30 +132,15 @@ Para usar la app contra los emuladores en vez de producción:
 npm run dev:emu
 ```
 
-## Antes de abrirlo al público
+## Adaptarlo a otra emergencia
 
-Tres cosas que un despliegue real necesita y este MVP todavía no trae:
+Tres lugares, y ninguno más:
 
-1. **App Check** (reCAPTCHA Enterprise). Es lo primero. La identidad anónima es
-   gratuita, así que cupos y bloqueos se esquivan creando otra cuenta; App Check
-   es lo que hace cara esa creación. Sin él, las defensas frenan al oportunista
-   pero no al atacante con un script. Ver [SEGURIDAD.md](SEGURIDAD.md).
-2. **Teselas del mapa propias.** El default apunta a
-   `tile.openstreetmap.org`, cuya política de uso no cubre picos masivos.
-   Configura un proveedor propio antes de un lanzamiento amplio:
-   ```
-   NEXT_PUBLIC_TILE_URL=https://…/{z}/{x}/{y}.png
-   NEXT_PUBLIC_TILE_ATTRIBUTION=…
-   ```
-3. **Centro del mapa.** Por defecto cae en Santiago de Chile. Ajusta la zona de
-   la emergencia:
-   ```
-   NEXT_PUBLIC_DEFAULT_LAT=-33.45
-   NEXT_PUBLIC_DEFAULT_LNG=-70.66
-   ```
-
-También conviene revisar la retención de datos: los reportes guardan teléfono y
-coordenadas de personas en situación vulnerable, y hoy nada los borra.
+1. **`lib/zones.ts`** — los focos de la emergencia. Es lo que permite que un
+   voluntario sepa si lo que lee le queda cerca o a 250 km.
+2. **`NEXT_PUBLIC_DEFAULT_LAT` / `LNG` / `ZOOM`** — dónde arranca el mapa.
+3. **`firestore.rules`** — la lista cerrada de zonas válidas, que debe coincidir
+   con `lib/zones.ts`. Una prueba comprueba que no se desincronicen.
 
 ## Estructura
 
@@ -163,8 +149,11 @@ app/                    rutas: inicio, /necesito, /ayudar, /necesidad, /mis-repo
 components/             UI sin estado + mapas Leaflet (carga diferida, solo cliente)
 lib/                    firebase, auth, acceso a datos, geo, tipos
 public/                 manifest, service worker, íconos
+functions/              Cloud Functions: ráfagas, purga de datos, recuperación
+tests/                  65 pruebas: unitarias, recorridos, reglas, sin señal
 firestore.rules         modelo de permisos completo
-scripts/test-rules.mjs  20 pruebas del modelo de seguridad
+scripts/validadores.mjs acreditar, listar y revocar coordinadores
+scripts/seed-dev.mjs    datos de prueba en emuladores (nunca toca producción)
 scripts/make-icons.mjs  regenera los PNG del logo
 ```
 

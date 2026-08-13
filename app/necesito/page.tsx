@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { getCurrentPosition } from "@/lib/geo";
 import {
   createNeed,
+  findSimilarNeeds,
   formatRecoveryCode,
   MAX_DESCRIPTION,
   MAX_REFERENCE,
@@ -21,6 +22,7 @@ import {
   CATEGORY_LABEL,
   type Category,
   type GeoPoint,
+  type Need,
 } from "@/lib/types";
 
 const PointPicker = dynamic(() => import("@/components/map/PointPicker"), {
@@ -60,6 +62,7 @@ function NecesitoFlow() {
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [parecidas, setParecidas] = useState<Need[]>([]);
 
   // Quien reporta una vez suele reportar otra: no le pedimos sus datos de nuevo.
   useEffect(() => {
@@ -85,6 +88,20 @@ function NecesitoFlow() {
       setShowPicker(true);
     }
   }
+
+  // Se consulta en segundo plano mientras la persona llena el resto. Si falla o
+  // tarda, no pasa nada: es una ayuda para no ahogar a los validadores, no un
+  // requisito para publicar.
+  useEffect(() => {
+    if (!location || !category || step !== 2) return;
+    let vigente = true;
+    findSimilarNeeds(location, category).then((lista) => {
+      if (vigente) setParecidas(lista);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [location, category, step]);
 
   const canSubmit =
     !!category &&
@@ -321,6 +338,31 @@ function NecesitoFlow() {
           >
             {sending ? "Enviando…" : "Publicar necesidad"}
           </button>
+          {parecidas.length > 0 && (
+            <div className="notice notice--signal stack" style={{ gap: 8 }}>
+              <span className="strong">
+                {parecidas.length === 1
+                  ? "Ya hay una necesidad parecida muy cerca"
+                  : `Ya hay ${parecidas.length} necesidades parecidas muy cerca`}
+              </span>
+              {parecidas.slice(0, 3).map((n) => (
+                <Link
+                  key={n.id}
+                  className="meta strong"
+                  href={`/necesidad/?id=${n.id}`}
+                  style={{ display: "block" }}
+                >
+                  · {n.description}
+                </Link>
+              ))}
+              <span className="meta">
+                Si es la misma, no la publiques de nuevo: repetirla hace que los
+                coordinadores revisen lo mismo dos veces. Si la tuya es distinta
+                —otra familia, otra cosa— publícala sin problema.
+              </span>
+            </div>
+          )}
+
           {!canSubmit && (
             <p className="meta center">
               Falta el teléfono y una ubicación (GPS, punto en el mapa o

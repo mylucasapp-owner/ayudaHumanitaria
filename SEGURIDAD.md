@@ -87,8 +87,9 @@ que no incrementarlo.
 
 ### 5. Suplantación de coordinadores
 
-- Ser validador es tener un documento en `validators/{uid}` que **solo se crea
-  desde la consola**. No hay ninguna ruta por la que un cliente se autoproclame.
+- Ser validador es tener un documento en `validators/{uid}` que **ningún cliente
+  puede crear**: se escribe con credencial de administrador, mediante
+  `scripts/validadores.mjs`. No hay ruta por la que alguien se autoproclame.
 - Verificar deja registrado `verifiedByUid`, no solo el nombre con que se firmó.
 
 ### 6. Alteración de reportes ajenos
@@ -122,6 +123,7 @@ Function.
 | `detectarRafagaDePublicaciones` | Inundación de reportes (las reglas no cuentan) |
 | `purgarContactosCerrados` | Retención de datos personales, a los 30 días |
 | `reabrirEntregasSinConfirmar` | Necesidades varadas en el limbo, a las 72 h |
+| `recuperarReporte` | Devolver un reporte a quien perdió su identidad de navegador |
 
 **App Check** está registrado con reCAPTCHA Enterprise y emitiendo tokens, pero
 **en modo monitoreo**: mide sin rechazar. Activar el bloqueo dejaría fuera a
@@ -155,9 +157,22 @@ tolerar algo de abuso. El criterio para activarlo está en
   coordina 50 entregas topará a las 8. La respuesta correcta es acreditarla como
   validadora, no subir el cupo para todos.
 
+### 8. Duplicados que ahogan la verificación
+
+No son mala fe: son varias personas de una cuadra reportando lo mismo, o alguien
+que reintentó creyendo que no se había enviado. El costo lo pagan los
+validadores, revisando tres veces el mismo pedido mientras otros esperan.
+
+- Al marcar la ubicación se avisa si ya hay una necesidad de la misma categoría
+  a menos de 400 m, con su descripción y un enlace.
+- Es solo un aviso. Dos familias vecinas pueden necesitar lo mismo de verdad, y
+  frenar a quien está pidiendo ayuda sería mucho peor que tolerar repetidos.
+- La consulta corre en segundo plano mientras la persona llena el formulario: no
+  agrega ningún paso ni espera, y si falla no pasa nada.
+
 ## Verificación
 
-`npm test` levanta 46 casos contra los emuladores, escritos como
+`npm test` levanta 65 casos contra los emuladores, escritos como
 situaciones de terreno y no como reglas abstractas. Entre ellos: que un tercero
 no vea el teléfono antes de comprometerse, que un cupo de otra necesidad no
 sirva, que el contador no se pueda saltar, que quien entrega no pueda cerrar,

@@ -32,6 +32,7 @@ import {
   fetchContact,
   blockUser,
   subscribeToOpenNeeds,
+  findSimilarNeeds,
   ClaimTakenError,
   ClaimQuotaError,
   BlockedError,
@@ -346,4 +347,47 @@ test("el reporte queda congelado: nadie reescribe lo que otro pidió", async () 
 
   const snap = await adminGet(`needs/${id}`);
   assert.equal(snap.fields.description.stringValue, REPORT.description);
+});
+
+test("se avisa de un duplicado cercano, pero solo del mismo tipo y de verdad cerca", async () => {
+  const vecino = await anonActor("vecino-dup");
+  // Lejos del punto que usan las demás pruebas: comparten emulador y sus
+  // necesidades caerían dentro del radio, falseando el resultado.
+  const cancha = { lat: 3.39, lng: -76.58 };
+
+  await publish(vecino, {
+    category: "agua",
+    description: "Agua potable para el albergue",
+    location: cancha,
+  });
+
+  // A media cuadra y de lo mismo: es el caso que ahoga a los validadores.
+  const aMediaCuadra = { lat: cancha.lat + 0.0015, lng: cancha.lng };
+  const parecidas = await as(vecino, () => findSimilarNeeds(aMediaCuadra, "agua"));
+  assert.equal(parecidas.length, 1);
+  assert.match(parecidas[0].description, /Agua potable/);
+
+  // Misma cuadra pero otra necesidad: no es duplicado.
+  const otraCosa = await as(vecino, () => findSimilarNeeds(aMediaCuadra, "medico"));
+  assert.equal(otraCosa.length, 0);
+
+  // Lo mismo, pero a dos kilómetros: tampoco.
+  const lejos = { lat: cancha.lat + 0.02, lng: cancha.lng };
+  const aLoLejos = await as(vecino, () => findSimilarNeeds(lejos, "agua"));
+  assert.equal(aLoLejos.length, 0);
+});
+
+test("una necesidad ya cerrada no se cuenta como duplicado", async () => {
+  const rosa = await anonActor("rosa-cerrada");
+  const punto = { lat: 4.8087, lng: -75.6906 };
+
+  const id = await publish(rosa, {
+    category: "refugio",
+    description: "Colchonetas para tres familias",
+    location: punto,
+  });
+  await as(rosa, () => resolveNeed(id));
+
+  const parecidas = await as(rosa, () => findSimilarNeeds(punto, "refugio"));
+  assert.equal(parecidas.length, 0, "una necesidad resuelta no debe frenar un pedido nuevo");
 });
