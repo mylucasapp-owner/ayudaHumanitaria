@@ -41,6 +41,13 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },
       {
+        "source": "/opengraph-image",
+        "headers": [
+          { "key": "Content-Type", "value": "image/png" },
+          { "key": "Cache-Control", "value": "public, max-age=86400" }
+        ]
+      },
+      {
         "source": "/",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },

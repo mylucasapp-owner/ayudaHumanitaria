@@ -3,6 +3,7 @@ import CategoryIcon from "./CategoryIcon";
 import StatusTags from "./StatusTags";
 import { formatAgo, formatDistance } from "@/lib/geo";
 import { CATEGORY_LABEL, type Need } from "@/lib/types";
+import { zoneLabel } from "@/lib/zones";
 
 export default function NeedCard({
   need,
@@ -13,6 +14,8 @@ export default function NeedCard({
   distanceKm?: number | null;
   href?: string;
 }) {
+  const zona = zoneLabel(need.location);
+
   const body = (
     <>
       <div className="row" style={{ alignItems: "flex-start" }}>
@@ -32,6 +35,10 @@ export default function NeedCard({
       >
         <span className="grow">{need.reference || "Sin referencia escrita"}</span>
         <span className="strong" style={{ whiteSpace: "nowrap" }}>
+          {/* La zona va primero porque sin ella una referencia como "Vereda La
+              Suiza" no le dice nada a quien no es de allí, y el voluntario no
+              puede saber si le queda cerca o a 250 km. */}
+          {zona && <span className="tag tag--zone">{zona}</span>}
           {typeof distanceKm === "number"
             ? formatDistance(distanceKm)
             : formatAgo(need.createdAt)}

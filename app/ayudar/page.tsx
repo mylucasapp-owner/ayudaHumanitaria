@@ -9,6 +9,7 @@ import FirebaseGate from "@/components/FirebaseGate";
 import NeedCard from "@/components/NeedCard";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, getCurrentPosition } from "@/lib/geo";
+import { ZONES, zoneOf } from "@/lib/zones";
 import { subscribeToOpenNeeds } from "@/lib/needs";
 import {
   CATEGORIES,
@@ -25,6 +26,8 @@ const NeedsMap = dynamic(() => import("@/components/map/NeedsMap"), {
 });
 
 type View = "lista" | "mapa";
+
+const ZONE_KEY = "ah.zona";
 
 export default function Page() {
   return (
@@ -44,6 +47,45 @@ function AyudarPage() {
   const [category, setCategory] = useState<Category | "todas">("todas");
   const [hideTaken, setHideTaken] = useState(true);
   const [me, setMe] = useState<GeoPoint | null>(null);
+  const [zone, setZone] = useState<string>("todas");
+  const [locating, setLocating] = useState(false);
+  const [geoMessage, setGeoMessage] = useState<string | null>(null);
+
+  // La zona elegida se recuerda: un voluntario trabaja siempre en la suya y no
+  // tiene por qué volver a filtrar cada vez que abre la app.
+  useEffect(() => {
+    try {
+      const guardada = localStorage.getItem(ZONE_KEY);
+      if (guardada) setZone(guardada);
+    } catch {
+      /* sin almacenamiento se arranca en "todas" */
+    }
+  }, []);
+
+  function elegirZona(id: string) {
+    setZone(id);
+    try {
+      localStorage.setItem(ZONE_KEY, id);
+    } catch {
+      /* preferencia no persistida: no es grave */
+    }
+  }
+
+  async function ubicarme() {
+    setLocating(true);
+    setGeoMessage(null);
+    const r = await getCurrentPosition();
+    setLocating(false);
+    if (r.ok) {
+      setMe(r.point);
+      // Si su ubicación cae en un foco conocido, se filtra solo: es lo que
+      // habría hecho a mano.
+      const suya = zoneOf(r.point);
+      if (suya) elegirZona(suya.id);
+    } else {
+      setGeoMessage(r.message);
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -70,6 +112,7 @@ function AyudarPage() {
   const visible = useMemo(() => {
     const withDistance = needs
       .filter((n) => category === "todas" || n.category === category)
+      .filter((n) => zone === "todas" || zoneOf(n.location)?.id === zone)
       .filter(
         (n) =>
           !hideTaken ||
@@ -92,7 +135,17 @@ function AyudarPage() {
       return (b.need.createdAt ?? 0) - (a.need.createdAt ?? 0);
     });
     return withDistance;
-  }, [needs, category, hideTaken, me]);
+  }, [needs, category, hideTaken, me, zone]);
+
+  /** Cuántas hay por zona, para no ofrecer filtros que no llevan a nada. */
+  const porZona = useMemo(() => {
+    const cuenta = new Map<string, number>();
+    for (const n of needs) {
+      const z = zoneOf(n.location);
+      if (z) cuenta.set(z.id, (cuenta.get(z.id) ?? 0) + 1);
+    }
+    return cuenta;
+  }, [needs]);
 
   return (
     <main className="shell shell--wide" id="main">
@@ -117,6 +170,51 @@ function AyudarPage() {
 
       <h1 className="title">Necesidades cerca</h1>
       <ConnectionState />
+
+      {!me && (
+        <div className="stack" style={{ gap: 8 }}>
+          <button
+            type="button"
+            className="btn"
+            disabled={locating}
+            onClick={ubicarme}
+          >
+            {locating ? "Buscando señal…" : "Usar mi ubicación"}
+          </button>
+          {geoMessage ? (
+            <p className="notice notice--signal">
+              {geoMessage} Mientras tanto, elige tu zona abajo.
+            </p>
+          ) : (
+            <p className="meta center">
+              Ordena por cercanía y filtra tu zona automáticamente.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="chips" role="group" aria-label="Filtrar por zona">
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={zone === "todas"}
+          onClick={() => elegirZona("todas")}
+        >
+          Toda la región
+        </button>
+        {ZONES.map((z) => (
+          <button
+            key={z.id}
+            type="button"
+            className="chip"
+            aria-pressed={zone === z.id}
+            onClick={() => elegirZona(z.id)}
+          >
+            {z.short}
+            {porZona.get(z.id) ? ` · ${porZona.get(z.id)}` : ""}
+          </button>
+        ))}
+      </div>
 
       <div className="chips" role="group" aria-label="Filtrar por categoría">
         <button
@@ -147,7 +245,9 @@ function AyudarPage() {
         aria-pressed={hideTaken}
         onClick={() => setHideTaken((v) => !v)}
       >
-        {hideTaken ? "Ocultando ya tomadas" : "Mostrando todas"}
+        {/* El rótulo dice qué se está viendo, no qué se está escondiendo: al
+            leer "ocultando" nadie sabe si tocarlo oculta o muestra. */}
+        {hideTaken ? "Solo disponibles" : "Todas, incluso tomadas"}
       </button>
 
       {error && <p className="notice notice--error">{error}</p>}

@@ -550,6 +550,19 @@ a {
   text-align: center;
 }
 
+/* La zona se lee antes que la distancia: sin ella una referencia local no
+   ubica a nadie que no sea del sector. */
+.tag--zone {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  vertical-align: 1px;
+}
+
 /* El aviso se superpone al mapa en vez de empujarlo: mover el layout cuando
    fallan las teselas desplazaría lo que el usuario estaba tocando. */
 .map-wrap {

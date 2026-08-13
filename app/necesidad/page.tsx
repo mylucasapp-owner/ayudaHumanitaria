@@ -10,6 +10,8 @@ import StatusTags from "@/components/StatusTags";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import type { ContactResult } from "@/lib/needs";
+import { SITE } from "@/lib/site";
+import { zoneLabel } from "@/lib/zones";
 import {
   BlockedError,
   ClaimQuotaError,
@@ -61,6 +63,7 @@ function NeedDetail() {
   const [claimName, setClaimName] = useState("");
   const [flagged, setFlagged] = useState(false);
   const [showFlagReasons, setShowFlagReasons] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -438,6 +441,46 @@ function NeedDetail() {
               ? "Esta necesidad está cerrada. Gracias a quien la cubrió."
               : "Este reporte fue descartado por un validador."}
           </p>
+        )}
+
+        {!closed && (
+          <>
+            <hr className="hr" />
+            {/* Reenviar es lo que hace que una necesidad encuentre a quien
+                puede cubrirla. En Colombia eso pasa por WhatsApp, y quien no
+                puede ayudar casi siempre conoce a alguien que sí. */}
+            <a
+              className="btn"
+              href={`https://wa.me/?text=${encodeURIComponent(
+                `${CATEGORY_LABEL[need.category]} en ${zoneLabel(need.location) ?? "zona afectada"}: ` +
+                  `${need.description}\n${need.reference || ""}\n` +
+                  `¿Puedes cubrirla o conoces a alguien? ${SITE.url}/necesidad/?id=${need.id}`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Compartir por WhatsApp
+            </a>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={async () => {
+                const url = `${SITE.url}/necesidad/?id=${need.id}`;
+                try {
+                  if (navigator.share) {
+                    await navigator.share({ title: need.description, url });
+                  } else {
+                    await navigator.clipboard.writeText(url);
+                    setCopied(true);
+                  }
+                } catch {
+                  /* el usuario canceló */
+                }
+              }}
+            >
+              {copied ? "Enlace copiado" : "Compartir de otra forma"}
+            </button>
+          </>
         )}
 
         {!isOwner && !closed && (

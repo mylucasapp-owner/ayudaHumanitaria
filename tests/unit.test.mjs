@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { distanceKm, formatDistance, formatAgo, formatCountdown } from "../lib/geo.ts";
+import { ZONES, zoneOf, zoneLabel } from "../lib/zones.ts";
 import {
   CATEGORIES,
   CATEGORY_LABEL,
@@ -142,6 +143,44 @@ test("el tope de cupo del cliente coincide con el de las reglas", async () => {
     rules.includes(`windowCount <= ${CLAIM_LIMIT_PER_WINDOW}`),
     "el tope de las reglas no coincide con CLAIM_LIMIT_PER_WINDOW",
   );
+});
+
+test("cada foco de la emergencia se reconoce por sus coordenadas", () => {
+  // Puntos reales dentro de cada ciudad afectada.
+  assert.equal(zoneOf({ lat: 3.4516, lng: -76.532 })?.id, "cali");
+  assert.equal(zoneOf({ lat: 4.8087, lng: -75.6906 })?.id, "pereira");
+  assert.equal(zoneOf({ lat: 5.6947, lng: -76.6611 })?.id, "choco");
+});
+
+test("un punto lejano no se atribuye a ninguna zona", () => {
+  // Bogotá está a más de 250 km del foco más cercano.
+  assert.equal(zoneOf({ lat: 4.711, lng: -74.0721 }), null);
+  assert.equal(zoneLabel({ lat: 4.711, lng: -74.0721 }), "Otra zona");
+});
+
+test("una necesidad sin ubicación no inventa zona", () => {
+  assert.equal(zoneOf(null), null);
+  assert.equal(zoneLabel(null), null);
+  assert.equal(zoneLabel(undefined), null);
+});
+
+test("entre dos zonas gana la más cercana, no la primera de la lista", () => {
+  // Punto intermedio Cali–Pereira, algo más arriba: debe caer en Pereira.
+  const entreMedio = { lat: 4.5, lng: -76.0 };
+  const z = zoneOf(entreMedio);
+  if (z) {
+    const dCali = distanceKm(entreMedio, ZONES.find((x) => x.id === "cali").center);
+    const dPereira = distanceKm(entreMedio, ZONES.find((x) => x.id === "pereira").center);
+    assert.equal(z.id, dCali < dPereira ? "cali" : "pereira");
+  }
+});
+
+test("toda zona declara nombre corto, largo y radio utilizable", () => {
+  for (const z of ZONES) {
+    assert.ok(z.label && z.short, `zona ${z.id} sin nombres`);
+    assert.ok(z.radiusKm > 0 && z.radiusKm < 500, `radio irreal en ${z.id}`);
+    assert.ok(Math.abs(z.center.lat) <= 90 && Math.abs(z.center.lng) <= 180);
+  }
 });
 
 test("el compromiso dura menos que el techo que imponen las reglas", () => {
