@@ -7,3 +7,8 @@ out/
 .firebase/
 next-env.d.ts
 tsconfig.tsbuildinfo
+functions/node_modules/
+functions/lib/
+firestore-debug.log
+firebase-debug.log
+ui-debug.log

@@ -9,7 +9,9 @@ import FirebaseGate from "@/components/FirebaseGate";
 import StatusTags from "@/components/StatusTags";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
+import type { ContactResult } from "@/lib/needs";
 import {
+  BlockedError,
   ClaimQuotaError,
   ClaimTakenError,
   blockUser,
@@ -32,7 +34,6 @@ import {
   type FlagReason,
   type GeoPoint,
   type Need,
-  type NeedContact,
 } from "@/lib/types";
 
 const CONTACT_KEY = "ah.contacto";
@@ -52,7 +53,7 @@ function NeedDetail() {
   const { user, validator } = useAuth();
   const [need, setNeed] = useState<Need | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contact, setContact] = useState<NeedContact | null>(null);
+  const [contact, setContact] = useState<ContactResult | null>(null);
   const [me, setMe] = useState<GeoPoint | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +124,9 @@ function NeedDetail() {
       await action();
     } catch (e) {
       setError(
-        e instanceof ClaimTakenError || e instanceof ClaimQuotaError
+        e instanceof ClaimTakenError ||
+          e instanceof ClaimQuotaError ||
+          e instanceof BlockedError
           ? e.message
           : "No se pudo completar la acción. Revisa la conexión.",
       );
@@ -205,19 +208,24 @@ function NeedDetail() {
         <section className="stack" style={{ gap: 10 }}>
           <hr className="hr" />
           <span className="label">Contacto</span>
-          {contact ? (
+          {contact === null && <p className="meta">Cargando contacto…</p>}
+
+          {contact?.state === "ok" && (
             <>
               <p className="strong" style={{ fontSize: 20 }}>
-                {contact.name || "Sin nombre"} ·{" "}
-                <span className="mono">{contact.phone}</span>
+                {contact.contact.name || "Sin nombre"} ·{" "}
+                <span className="mono">{contact.contact.phone}</span>
               </p>
               <div className="btn-row">
-                <a className="btn btn--primary" href={`tel:${contact.phone}`}>
+                <a
+                  className="btn btn--primary"
+                  href={`tel:${contact.contact.phone}`}
+                >
                   Llamar
                 </a>
                 <a
                   className="btn"
-                  href={`https://wa.me/${contact.phone.replace(/\D/g, "")}`}
+                  href={`https://wa.me/${contact.contact.phone.replace(/\D/g, "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -225,8 +233,24 @@ function NeedDetail() {
                 </a>
               </div>
             </>
-          ) : (
-            <p className="meta">Cargando contacto…</p>
+          )}
+
+          {contact?.state === "denied" && (
+            <p className="notice notice--signal">
+              Tu compromiso venció y el contacto dejó de estar disponible. Vuelve
+              a tomar la necesidad si aún puedes cubrirla.
+            </p>
+          )}
+
+          {contact?.state === "offline" && (
+            <p className="notice">
+              Sin conexión para traer el contacto. Reintenta cuando vuelva la
+              señal.
+            </p>
+          )}
+
+          {contact?.state === "missing" && (
+            <p className="notice">Esta necesidad no registró un contacto.</p>
           )}
         </section>
       )}

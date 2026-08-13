@@ -1,0 +1,173 @@
+/**
+ * Defensas que no se pueden expresar en reglas de Firestore.
+ *
+ * Las reglas validan una escritura contra el estado previo, de a una. No pueden
+ * contar, no pueden mirar hacia atrás en el tiempo y no pueden actuar solas.
+ * Todo lo que necesita esas tres cosas vive aquí.
+ *
+ * Criterio de diseño: ninguna de estas funciones está en el camino crítico de
+ * un damnificado. Publicar una necesidad sigue siendo una escritura directa a
+ * Firestore, que funciona sin señal y se encola. Si estas funciones se caen, la
+ * plataforma sigue sirviendo; solo pierde vigilancia.
+ */
+import { initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { logger } from "firebase-functions";
+
+initializeApp();
+const db = getFirestore();
+
+const REGION = "us-east1";
+
+/** Publicaciones por hora que delatan un script y no a una persona. */
+const BURST_LIMIT = 12;
+const BURST_WINDOW_MS = 60 * 60 * 1000;
+
+/** Días que se conserva el teléfono de una necesidad ya cerrada. */
+const CONTACT_RETENTION_DAYS = 30;
+
+/** Horas que una entrega puede esperar confirmación antes de reabrirse. */
+const DELIVERY_GRACE_HOURS = 72;
+
+/**
+ * Detección de ráfagas de publicación.
+ *
+ * Es el límite que las reglas no pueden imponer: un contador escrito por el
+ * cliente se esquiva no incrementándolo, y no hay forma de contar documentos
+ * desde una regla. Aquí sí.
+ *
+ * Actúa DESPUÉS de la escritura, a propósito. Interponer una función en la
+ * creación de necesidades sacrificaría el modo sin conexión y agregaría un
+ * arranque en frío al momento más urgente de la app. Detectar en segundos y
+ * cortar hacia adelante es el mejor canje.
+ */
+export const detectarRafagaDePublicaciones = onDocumentCreated(
+  { document: "needs/{needId}", region: REGION },
+  async (event) => {
+    const need = event.data?.data();
+    const ownerUid = need?.ownerUid as string | undefined;
+    if (!ownerUid) return;
+
+    const since = Timestamp.fromMillis(Date.now() - BURST_WINDOW_MS);
+    const recientes = await db
+      .collection("needs")
+      .where("ownerUid", "==", ownerUid)
+      .where("createdAt", ">=", since)
+      .count()
+      .get();
+
+    const total = recientes.data().count;
+    if (total <= BURST_LIMIT) return;
+
+    // Un validador acreditado puede publicar en volumen legítimamente.
+    const esValidador = (await db.doc(`validators/${ownerUid}`).get()).exists;
+    if (esValidador) return;
+
+    const yaBloqueado = (await db.doc(`blocked/${ownerUid}`).get()).exists;
+    if (!yaBloqueado) {
+      await db.doc(`blocked/${ownerUid}`).set({
+        byUid: "system",
+        note: `Publicó ${total} necesidades en una hora`,
+        at: FieldValue.serverTimestamp(),
+      });
+      logger.warn("cuenta bloqueada por ráfaga", { ownerUid, total });
+    }
+
+    // No se descarta ninguna necesidad automáticamente: si el que reporta en
+    // ráfaga fuera un coordinador improvisado con gente real a cargo, borrarlas
+    // sería el peor error posible. Se marcan para que un humano decida.
+    await db
+      .doc(`needs/${event.params.needId}/flags/system`)
+      .set({
+        needId: event.params.needId,
+        uid: "system",
+        reason: "volumen-inusual",
+        at: FieldValue.serverTimestamp(),
+      });
+  },
+);
+
+/**
+ * Retención de datos personales.
+ *
+ * Los reportes guardan teléfono y coordenadas de gente vulnerable. Una vez
+ * cerrada la necesidad ese dato ya no cumple ninguna función y solo puede
+ * hacer daño si se filtra. La necesidad se conserva —es la auditoría de la
+ * emergencia— pero sin el contacto.
+ */
+export const purgarContactosCerrados = onSchedule(
+  { schedule: "every day 04:00", timeZone: "America/Bogota", region: REGION },
+  async () => {
+    const corte = Timestamp.fromMillis(
+      Date.now() - CONTACT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    const cerradas = await db
+      .collection("needs")
+      .where("active", "==", false)
+      .where("updatedAt", "<", corte)
+      .limit(400)
+      .get();
+
+    let purgados = 0;
+    for (const necesidad of cerradas.docs) {
+      const contacto = necesidad.ref.collection("private").doc("contact");
+      if (!(await contacto.get()).exists) continue;
+      await contacto.delete();
+      purgados++;
+    }
+
+    logger.info("purga de contactos", {
+      revisadas: cerradas.size,
+      purgados,
+    });
+  },
+);
+
+/**
+ * Entregas que nadie confirmó.
+ *
+ * Una necesidad declarada "entregada" que nadie confirma se queda en el limbo:
+ * ni cubierta ni disponible. Pasado el plazo se reabre.
+ *
+ * Reabrir puede provocar una entrega duplicada si la ayuda sí había llegado.
+ * Se asume ese costo: en una emergencia, que una familia reciba dos veces es
+ * mucho menos grave que una familia que nunca recibió y quedó invisible.
+ */
+export const reabrirEntregasSinConfirmar = onSchedule(
+  { schedule: "every 6 hours", timeZone: "America/Bogota", region: REGION },
+  async () => {
+    const corte = Timestamp.fromMillis(
+      Date.now() - DELIVERY_GRACE_HOURS * 60 * 60 * 1000,
+    );
+
+    const estancadas = await db
+      .collection("needs")
+      .where("status", "==", "entregada")
+      .where("updatedAt", "<", corte)
+      .limit(200)
+      .get();
+
+    for (const necesidad of estancadas.docs) {
+      await necesidad.ref.update({
+        status: "abierta",
+        active: true,
+        claim: null,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      await necesidad.ref
+        .collection("flags")
+        .doc("system")
+        .set({
+          needId: necesidad.id,
+          uid: "system",
+          reason: "entrega-sin-confirmar",
+          at: FieldValue.serverTimestamp(),
+        });
+    }
+
+    logger.info("entregas reabiertas", { total: estancadas.size });
+  },
+);

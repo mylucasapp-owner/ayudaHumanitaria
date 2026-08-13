@@ -1,8 +1,13 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+} from "firebase/app-check";
 import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
 import {
   connectFirestoreEmulator,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
   type Firestore,
@@ -17,8 +22,37 @@ const config = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+let appCheckStarted = false;
+
+/**
+ * App Check acredita que la petición viene de la app real en un navegador
+ * real. Es la única defensa que encarece crear identidades anónimas, y sin ella
+ * los cupos y bloqueos se esquivan reinstalando. Ver SEGURIDAD.md.
+ *
+ * Falla en silencio a propósito: si reCAPTCHA no carga —red mala, bloqueador,
+ * navegador viejo— la app debe seguir funcionando. Rechazar a un damnificado
+ * porque no pudo probar que es humano sería el peor final posible.
+ */
+function startAppCheck(instance: ReturnType<typeof initializeApp>) {
+  if (appCheckStarted || !RECAPTCHA_SITE_KEY) return;
+  if (typeof window === "undefined") return;
+  appCheckStarted = true;
+  try {
+    initializeAppCheck(instance, {
+      provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch {
+    // Sin atestación se sigue: la barrera es de abuso, no de acceso.
+  }
+}
+
 function app() {
-  return getApps().length ? getApp() : initializeApp(config);
+  const instance = getApps().length ? getApp() : initializeApp(config);
+  if (!useEmulators) startAppCheck(instance);
+  return instance;
 }
 
 /** Con `NEXT_PUBLIC_USE_EMULATORS=1` toda la app apunta a los emuladores. */
@@ -28,15 +62,30 @@ let dbRef: Firestore | null = null;
 let authRef: Auth | null = null;
 
 /**
+ * Instancias inyectadas por las pruebas para poder ejecutar el código real con
+ * varias identidades a la vez. En el navegador siempre vale `null`.
+ */
+let injected: { db: Firestore; auth: Auth } | null = null;
+
+export function __injectForTests(instances: { db: Firestore; auth: Auth } | null) {
+  injected = instances;
+}
+
+/**
  * Firestore con caché persistente: la última vista del mapa sigue disponible
  * aunque se caiga la señal, y las escrituras se encolan hasta que vuelva.
+ *
+ * En navegación privada IndexedDB no está disponible; ahí se cae a memoria en
+ * vez de fallar. Perder la caché es un mal menor frente a que la app no abra.
  */
 export function db(): Firestore {
+  if (injected) return injected.db;
   if (!dbRef) {
+    const canPersist = typeof indexedDB !== "undefined";
     dbRef = initializeFirestore(app(), {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
+      localCache: canPersist
+        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        : memoryLocalCache(),
     });
     if (useEmulators) connectFirestoreEmulator(dbRef, "127.0.0.1", 8181);
   }
@@ -44,6 +93,7 @@ export function db(): Firestore {
 }
 
 export function auth(): Auth {
+  if (injected) return injected.auth;
   if (!authRef) {
     authRef = getAuth(app());
     if (useEmulators) {

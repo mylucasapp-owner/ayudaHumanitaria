@@ -1,8 +1,13 @@
 # Ayuda Humanitaria
 
+**https://ayuda-humanitaria-89e72.web.app**
+
 Centraliza, verifica y geolocaliza las necesidades urgentes de los damnificados
 por desastres naturales, y las conecta con los recursos que ofrecen ciudadanos y
 empresas.
+
+Para poner esto en manos de la comunidad, ver [LANZAMIENTO.md](LANZAMIENTO.md).
+Para el modelo de amenazas y las defensas, [SEGURIDAD.md](SEGURIDAD.md).
 
 PWA en Next.js (exportación estática) sobre Firebase. Sin registro para pedir ni
 para ofrecer ayuda: la identidad es anónima y automática.
@@ -94,28 +99,33 @@ npm run dev
 npm run deploy
 ```
 
-## Emuladores y pruebas de seguridad
-
-Las reglas son la única barrera entre un teléfono privado y cualquier
-desconocido, así que están cubiertas por pruebas. En una terminal:
+## Pruebas
 
 ```bash
-npm run emulators
+npm test
 ```
 
-Y en otra:
+Levanta los emuladores, corre las 46 pruebas y los apaga. No necesita
+dependencias extra: usa el runner de Node.
+
+Tres capas:
+
+- **`tests/unit.test.mjs`** — lógica pura: distancias, formatos de tiempo, y
+  comprobaciones de que el código y `firestore.rules` no se desincronicen
+  (categorías, motivos de denuncia, tope de cupo).
+- **`tests/journeys.test.mjs`** — recorridos completos con varios actores,
+  ejecutando **el mismo código que corre en el navegador**: se pide, se cubre,
+  se entrega, se confirma; se abandona y otro retoma; se denuncia y se descarta.
+- **`tests/rules.test.mjs`** — lo que la app nunca enviaría y un atacante sí:
+  campos fuera de rango, escalada de privilegios, manipulación del ledger.
+
+Solo la capa pura, sin emuladores:
 
 ```bash
-npm run test:rules
+npm run test:unit
 ```
 
-Son 49 casos escritos como situaciones de terreno, no como reglas abstractas:
-que un tercero no vea el teléfono antes de comprometerse, que un cupo de otra
-necesidad no sirva, que el contador de cupos no se pueda saltar, que quien
-entrega no pueda cerrar la necesidad, que nadie se autoproclame validador, y
-que una cuenta bloqueada no pueda publicar ni denunciar.
-
-Para probar la app contra los emuladores en vez de contra producción:
+Para usar la app contra los emuladores en vez de producción:
 
 ```bash
 npm run dev:emu

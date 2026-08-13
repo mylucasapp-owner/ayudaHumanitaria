@@ -72,7 +72,11 @@ function AyudarPage() {
       .filter((n) => category === "todas" || n.category === category)
       .filter(
         (n) =>
-          !hideTaken || n.status === "abierta" || isClaimExpired(n),
+          !hideTaken ||
+          n.status === "abierta" ||
+          // Un compromiso vencido vuelve a estar disponible, pero una entrega
+          // declarada no: está esperando confirmación, no oferentes.
+          (n.status === "comprometida" && isClaimExpired(n)),
       )
       .map((n) => ({
         need: n,

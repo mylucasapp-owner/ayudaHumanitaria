@@ -10,7 +10,8 @@
     su propia caché persistente y cachear sus respuestas rompería el tiempo real.
 */
 
-const VERSION = "v1";
+// Subir esta versión invalida todas las cachés en el próximo despliegue.
+const VERSION = "v2";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const NAV_TIMEOUT_MS = 4000;
@@ -83,7 +84,18 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   const cache = await caches.open(SHELL);
   try {
-    const response = await withTimeout(fetch(request), NAV_TIMEOUT_MS);
+    // `no-store` salta la caché HTTP del navegador. Sin esto, un HTML con
+    // max-age vigente hace que este "network first" nunca llegue a la red y
+    // los usuarios queden congelados en una versión vieja justo cuando se
+    // está corrigiendo algo en plena emergencia.
+    const fresh = new Request(request.url, {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: request.headers,
+      mode: "same-origin",
+      redirect: "follow",
+    });
+    const response = await withTimeout(fetch(fresh), NAV_TIMEOUT_MS);
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {

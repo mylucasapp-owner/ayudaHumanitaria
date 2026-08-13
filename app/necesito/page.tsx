@@ -258,7 +258,7 @@ function NecesitoFlow() {
               className="input"
               maxLength={MAX_REFERENCE}
               value={reference}
-              placeholder="Ej: Calle Los Aromos 120, frente a la cancha"
+              placeholder="Ej: Carrera 12 #4-30, frente a la cancha"
               onChange={(e) => setReference(e.target.value)}
             />
           </div>
@@ -292,7 +292,7 @@ function NecesitoFlow() {
               autoComplete="tel"
               maxLength={25}
               value={phone}
-              placeholder="+56 9 1234 5678"
+              placeholder="+57 300 123 4567"
               onChange={(e) => setPhone(e.target.value)}
             />
             <p className="meta">

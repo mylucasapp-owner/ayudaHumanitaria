@@ -13,9 +13,10 @@ una barrera inaceptable.
 
 La consecuencia es que **toda defensa atada al `uid` se esquiva creando otro**.
 Las reglas de este proyecto encarecen el abuso y lo dejan registrado, pero el
-corte duro de identidades baratas es **App Check**, que se activa en la consola
-y no se puede expresar en `firestore.rules`. Mientras App Check esté apagado,
-los cupos y bloqueos frenan al oportunista, no al atacante decidido.
+corte duro de identidades baratas es **App Check**, que no se puede expresar en
+`firestore.rules`. Está registrado y midiendo, aunque todavía **sin rechazar**
+(el porqué está más abajo). Hasta que rechace, los cupos y bloqueos frenan al
+oportunista, no al atacante decidido.
 
 ## Amenazas y qué hace la plataforma
 
@@ -80,9 +81,9 @@ los validadores.
 - Las necesidades verificadas suben al principio de la lista de oferentes, así
   que el reporte falso compite en desventaja.
 
-**Residual:** no hay límite de publicación por cuenta. Un tope real necesita
-enforcement en servidor (ver abajo); un contador puramente en reglas se esquiva
-sin más que no incrementarlo.
+**Residual:** el tope de publicación por cuenta lo aplica una Cloud Function
+(punto 7), no las reglas. Un contador puramente en reglas se esquiva sin más
+que no incrementarlo.
 
 ### 5. Suplantación de coordinadores
 
@@ -97,23 +98,48 @@ sin más que no incrementarlo.
   Solo cambia el ciclo de vida.
 - Nada se borra nunca. El histórico es la auditoría de la emergencia.
 
-## Lo que falta: enforcement en servidor
+### 7. Inundación de reportes
 
-Estas tres no se pueden resolver con reglas de Firestore y son las siguientes en
-prioridad. Las dos primeras requieren plan Blaze (pago por uso, con tope de
-gasto configurable).
+Publicar en ráfaga para ahogar a los validadores. Las reglas no pueden contar
+documentos ni mirar hacia atrás en el tiempo, así que esto vive en una Cloud
+Function.
 
-1. **App Check con reCAPTCHA Enterprise.** Lo primero que hay que activar. Sin
-   él, la clave web —que viaja al navegador por diseño— permite scriptear la
-   API directamente, y todo lo anterior se vuelve un obstáculo de minutos.
-   Se activa en la consola; no requiere Blaze.
-2. **Límite de publicación por cuenta y por IP**, en una Cloud Function que
-   intermedie la creación de necesidades.
-3. **Verificación del teléfono por SMS** para quien se ofrece a ayudar. Es la
+- `detectarRafagaDePublicaciones` cuenta las publicaciones de la cuenta en la
+  última hora y, sobre 12, la bloquea automáticamente.
+- Actúa **después** de la escritura, a propósito. Interponer una función en la
+  creación de necesidades sacrificaría el modo sin conexión y agregaría un
+  arranque en frío al momento más urgente de la app. Detectar en segundos y
+  cortar hacia adelante es mejor canje.
+- No descarta ninguna necesidad automáticamente: las marca para que un humano
+  decida. Si quien reporta en ráfaga fuera un coordinador improvisado con gente
+  real a cargo, borrarlas sería el peor error posible.
+- Los validadores están exentos: publican en volumen legítimamente.
+
+## Defensas activas en servidor
+
+| Función | Qué resuelve |
+|---|---|
+| `detectarRafagaDePublicaciones` | Inundación de reportes (las reglas no cuentan) |
+| `purgarContactosCerrados` | Retención de datos personales, a los 30 días |
+| `reabrirEntregasSinConfirmar` | Necesidades varadas en el limbo, a las 72 h |
+
+**App Check** está registrado con reCAPTCHA Enterprise y emitiendo tokens, pero
+**en modo monitoreo**: mide sin rechazar. Activar el bloqueo dejaría fuera a
+quien no pueda cargar reCAPTCHA —teléfono viejo, bloqueador, red filtrada—, y
+en una plataforma de emergencia dejar afuera a un damnificado real es peor que
+tolerar algo de abuso. El criterio para activarlo está en
+[LANZAMIENTO.md](LANZAMIENTO.md).
+
+## Lo que sigue faltando
+
+1. **Verificación del teléfono por SMS** para quien se ofrece a ayudar. Es la
    defensa más fuerte contra identidades desechables, y tiene una asimetría
    valiosa: pone la fricción del lado del voluntario, no del damnificado. Quien
    acaba de perder su casa no debería esperar un SMS; quien va a recibir el
    teléfono de esa persona, sí.
+2. **Límite por IP**, no solo por cuenta. Hoy la ráfaga se detecta por `uid`, y
+   un atacante puede repartir sus publicaciones entre identidades nuevas.
+3. **Bloqueo de App Check activado**, cuando las métricas lo respalden.
 
 ## Riesgos aceptados
 
@@ -121,16 +147,17 @@ gasto configurable).
   valor para un ladrón. Difuminarlas rompería el producto: un oferente necesita
   la distancia para decidir. Se asume el riesgo y se compensa con verificación
   en terreno.
-- **Retención indefinida.** Hoy nada borra los teléfonos ni las coordenadas.
-  Antes de que la plataforma crezca hay que definir una política —por ejemplo,
-  purgar el contacto de las necesidades cerradas a los 30 días.
+- **Las coordenadas se conservan indefinidamente.** El teléfono se purga a los
+  30 días de cerrada la necesidad, pero la ubicación queda: es la auditoría de
+  la emergencia. Si el histórico se publicara alguna vez, habría que agregarlo
+  por zona en vez de exponer puntos.
 - **El cupo estorba a operadores legítimos de volumen.** Una parroquia que
   coordina 50 entregas topará a las 8. La respuesta correcta es acreditarla como
   validadora, no subir el cupo para todos.
 
 ## Verificación
 
-`npm run test:rules` levanta 49 casos contra los emuladores, escritos como
+`npm test` levanta 46 casos contra los emuladores, escritos como
 situaciones de terreno y no como reglas abstractas. Entre ellos: que un tercero
 no vea el teléfono antes de comprometerse, que un cupo de otra necesidad no
 sirva, que el contador no se pueda saltar, que quien entrega no pueda cerrar,

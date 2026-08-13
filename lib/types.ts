@@ -68,7 +68,18 @@ export const FLAG_REASONS = [
   "estafa",
 ] as const;
 
-export type FlagReason = (typeof FLAG_REASONS)[number];
+/**
+ * Motivos que solo escribe el servidor. Quedan fuera de la lista que aceptan
+ * las reglas para que ningún cliente pueda fabricar una alerta del sistema.
+ */
+export const SYSTEM_FLAG_REASONS = [
+  "volumen-inusual",
+  "entrega-sin-confirmar",
+] as const;
+
+export type FlagReason =
+  | (typeof FLAG_REASONS)[number]
+  | (typeof SYSTEM_FLAG_REASONS)[number];
 
 export const FLAG_LABEL: Record<FlagReason, string> = {
   duplicada: "Está duplicada",
@@ -76,6 +87,8 @@ export const FLAG_LABEL: Record<FlagReason, string> = {
   "datos-falsos": "Los datos son falsos",
   "ya-resuelta": "Ya fue resuelta",
   estafa: "Parece una estafa",
+  "volumen-inusual": "Sistema: publicaciones en ráfaga",
+  "entrega-sin-confirmar": "Sistema: entrega nunca confirmada",
 };
 
 export type Flag = {

@@ -203,6 +203,16 @@ export class ClaimQuotaError extends Error {
   }
 }
 
+export class BlockedError extends Error {
+  constructor() {
+    super(
+      "Un coordinador restringió esta sesión. Acércate a un punto de " +
+        "coordinación en terreno si crees que es un error.",
+    );
+    this.name = "BlockedError";
+  }
+}
+
 const SLOT_KEY = "ah.cupos";
 
 /** Recuerda qué cupo se gastó en cada necesidad, para no pagar dos veces. */
@@ -247,8 +257,12 @@ async function reserveSlot(uid: string, needId: string): Promise<number> {
   } else {
     const data = snap.data();
     seq = Number(data.total ?? 0);
-    const startedAt = (data.windowStart as Timestamp | undefined)?.toMillis() ?? 0;
-    const fresh = Date.now() - startedAt >= CLAIM_WINDOW_MS;
+    const startedAt = (data.windowStart as Timestamp | undefined)?.toMillis();
+    // Sin señal, un serverTimestamp aún sin confirmar se lee como null. Ante la
+    // duda tratamos la ventana como vigente: pedir una ventana nueva que el
+    // servidor no reconoce hace que las reglas rechacen la escritura entera.
+    const fresh =
+      startedAt != null && Date.now() - startedAt >= CLAIM_WINDOW_MS;
     const nextCount = fresh ? 1 : Number(data.windowCount ?? 0) + 1;
     if (!fresh && nextCount > CLAIM_LIMIT_PER_WINDOW) throw new ClaimQuotaError();
     batch.update(ledgerRef, {
@@ -265,9 +279,14 @@ async function reserveSlot(uid: string, needId: string): Promise<number> {
 
   try {
     await batch.commit();
-  } catch {
-    // El rechazo aquí es casi siempre el tope de la ventana aplicado por reglas.
-    throw new ClaimQuotaError();
+  } catch (e) {
+    // Un rechazo aquí puede ser el tope de la ventana o una cuenta bloqueada.
+    // Confundirlos le dice a alguien expulsado que "espere un momento", que es
+    // falso y lo deja reintentando para siempre.
+    if (await isBlocked(uid)) throw new BlockedError();
+    const code = (e as { code?: string })?.code ?? "";
+    if (code === "permission-denied") throw new ClaimQuotaError();
+    throw e; // problemas de red: que los maneje quien llamó
   }
   rememberSlot(needId, seq);
   return seq;
@@ -287,10 +306,27 @@ export async function claimNeed(
   name: string,
   isValidator = false,
 ) {
-  const seq = isValidator
-    ? 0
-    : (rememberedSlot(needId) ?? (await reserveSlot(uid, needId)));
+  const remembered = isValidator ? null : rememberedSlot(needId);
+  const seq = isValidator ? 0 : (remembered ?? (await reserveSlot(uid, needId)));
 
+  try {
+    await commitClaim(needId, uid, name, seq);
+  } catch (e) {
+    // Un cupo recordado puede haber quedado huérfano: por ejemplo si el
+    // navegador conservó localStorage pero perdió la identidad anónima. En ese
+    // caso se paga un cupo nuevo en vez de dejar la necesidad inalcanzable.
+    if (remembered === null || e instanceof ClaimTakenError) throw e;
+    const fresh = await reserveSlot(uid, needId);
+    await commitClaim(needId, uid, name, fresh);
+  }
+}
+
+async function commitClaim(
+  needId: string,
+  uid: string,
+  name: string,
+  seq: number,
+) {
   const ref = doc(db(), "needs", needId);
   await runTransaction(db(), async (tx) => {
     const snap = await tx.get(ref);
@@ -468,17 +504,29 @@ export async function fetchLedgerTrail(uid: string): Promise<string[]> {
   }
 }
 
+export type ContactResult =
+  | { state: "ok"; contact: NeedContact }
+  | { state: "denied" }
+  | { state: "missing" }
+  | { state: "offline" };
+
 /**
  * Lee el contacto. Las reglas solo lo permiten al autor, a quien tiene el
- * compromiso vigente y a los validadores; para el resto devuelve null.
+ * compromiso vigente y a los validadores. Distingue el motivo del fallo: un
+ * "cargando…" eterno cuando el compromiso acaba de vencer deja al voluntario
+ * sin saber que perdió el acceso.
  */
-export async function fetchContact(needId: string): Promise<NeedContact | null> {
+export async function fetchContact(needId: string): Promise<ContactResult> {
   try {
     const snap = await getDoc(contactRef(needId));
-    if (!snap.exists()) return null;
+    if (!snap.exists()) return { state: "missing" };
     const d = snap.data();
-    return { name: String(d.name ?? ""), phone: String(d.phone ?? "") };
-  } catch {
-    return null;
+    return {
+      state: "ok",
+      contact: { name: String(d.name ?? ""), phone: String(d.phone ?? "") },
+    };
+  } catch (e) {
+    const code = (e as { code?: string })?.code ?? "";
+    return code === "permission-denied" ? { state: "denied" } : { state: "offline" };
   }
 }

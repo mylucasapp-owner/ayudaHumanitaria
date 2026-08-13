@@ -10,8 +10,11 @@ export const TILE_URL =
 export const TILE_ATTRIBUTION =
   process.env.NEXT_PUBLIC_TILE_ATTRIBUTION || "&copy; OpenStreetMap";
 
-/** Centro por defecto cuando aún no hay GPS ni necesidades ubicadas. */
+/**
+ * Centro por defecto cuando aún no hay GPS ni necesidades ubicadas.
+ * Se cambia por variables de entorno al desplegar en otra emergencia.
+ */
 export const FALLBACK_CENTER = {
-  lat: Number(process.env.NEXT_PUBLIC_DEFAULT_LAT ?? -33.45),
-  lng: Number(process.env.NEXT_PUBLIC_DEFAULT_LNG ?? -70.66),
+  lat: Number(process.env.NEXT_PUBLIC_DEFAULT_LAT ?? 4.711),
+  lng: Number(process.env.NEXT_PUBLIC_DEFAULT_LNG ?? -74.0721),
 };
