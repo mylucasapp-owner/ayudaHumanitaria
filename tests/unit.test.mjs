@@ -183,6 +183,41 @@ test("toda zona declara nombre corto, largo y radio utilizable", () => {
   }
 });
 
+test("el caché del service worker reconoce las teselas de cada proveedor", async () => {
+  // Si el patrón deja de coincidir, el caché no falla: simplemente deja de
+  // guardar, en silencio. Se dispararía el tráfico al proveedor y el mapa
+  // dejaría de funcionar sin señal, sin que nadie se entere hasta el bloqueo.
+  const { readFile } = await import("node:fs/promises");
+  const sw = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+  const declarado = sw.match(/const TILE_PATTERN = (\/.*\/);/)?.[1];
+  assert.ok(declarado, "no se encontró TILE_PATTERN en sw.js");
+
+  const cuerpo = declarado.slice(1, declarado.lastIndexOf("/"));
+  const patron = new RegExp(cuerpo);
+
+  const teselas = [
+    "/8/73/124.png", // OpenStreetMap
+    "/tiles/alidade_smooth_dark/8/73/124.png", // Stadia, estilo oscuro
+    "/tiles/stamen_toner/14/4823/7533.png", // Stadia, alto contraste
+    "/styles/basic/12/1205/1876.webp", // MapTiler
+    "/8/73/124@2x.png", // pantallas densas
+    "/v1/tiles/10/300/500.jpg",
+  ];
+  for (const t of teselas) {
+    assert.ok(patron.test(t), `no reconoce la tesela ${t}`);
+  }
+
+  const noTeselas = [
+    "/necesidad/",
+    "/_next/static/chunks/app/page-abc123.js",
+    "/icon-192.png",
+    "/opengraph-image",
+  ];
+  for (const t of noTeselas) {
+    assert.ok(!patron.test(t), `confunde ${t} con una tesela`);
+  }
+});
+
 test("el compromiso dura menos que el techo que imponen las reglas", () => {
   // Las reglas aceptan hasta 12 h; el cliente pide 3 h.
   assert.ok(CLAIM_TTL_MS < 12 * 3600 * 1000);
