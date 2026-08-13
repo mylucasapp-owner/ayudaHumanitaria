@@ -21,6 +21,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
+import { zoneOf } from "./zones";
 import {
   CLAIM_LIMIT_PER_WINDOW,
   CLAIM_TTL_MS,
@@ -80,6 +81,7 @@ function toNeed(snap: QueryDocumentSnapshot<DocumentData>): Need {
     verified: Boolean(d.verified),
     verifiedByName: d.verifiedByName ? String(d.verifiedByName) : null,
     verifiedByUid: d.verifiedByUid ? String(d.verifiedByUid) : null,
+    zone: d.zone ? String(d.zone) : null,
     claim,
   };
 }
@@ -182,6 +184,8 @@ export async function createNeed(
     verifiedByName: null,
     verifiedByUid: null,
     claim: null,
+    // Se calcula al publicar para poder filtrar por zona en la consulta.
+    zone: zoneOf(input.location)?.id ?? "otra",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -218,18 +222,25 @@ export async function createNeed(
   return { id: ref.id, pending, code };
 }
 
-/** Feed en vivo de necesidades pendientes, lo más reciente primero. */
+/**
+ * Feed en vivo de necesidades pendientes, lo más reciente primero.
+ *
+ * El filtro por zona va en la consulta, no en el cliente. Filtrar después de
+ * traer las 300 más recientes parece equivalente, pero no lo es: si el volumen
+ * de una ciudad llena ese tope, las demás zonas desaparecen del listado sin que
+ * nadie se entere. Un Chocó vacío por saturación de Cali sería el peor fallo
+ * posible, porque es indistinguible de "no hay necesidades".
+ */
 export function subscribeToOpenNeeds(
   onData: (needs: Need[]) => void,
   onError: (e: unknown) => void,
+  zone?: string,
 ) {
+  const filtros = [where("active", "==", true)];
+  if (zone && zone !== "todas") filtros.push(where("zone", "==", zone));
+
   return onSnapshot(
-    query(
-      needsCol(),
-      where("active", "==", true),
-      orderBy("createdAt", "desc"),
-      limit(FEED_LIMIT),
-    ),
+    query(needsCol(), ...filtros, orderBy("createdAt", "desc"), limit(FEED_LIMIT)),
     (snap) => onData(snap.docs.map(toNeed)),
     onError,
   );

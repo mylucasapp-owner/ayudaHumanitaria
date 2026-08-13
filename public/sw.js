@@ -16,7 +16,7 @@
 */
 
 // Subir esta versión invalida todas las cachés en el próximo despliegue.
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
@@ -43,6 +43,10 @@ const SHELL_URLS = [
   "/mis-reportes/",
   "/recuperar/",
   "/como-usar/",
+  // Faltaban, y sin precargar el respaldo servía el inicio en su lugar. Un
+  // coordinador con mala señal abría la portada en vez de su panel.
+  "/validador/",
+  "/legal/",
   "/manifest.webmanifest",
   "/icon-192.png",
 ];
@@ -151,14 +155,14 @@ async function networkFirst(request) {
     // max-age vigente hace que este "network first" nunca llegue a la red y
     // los usuarios queden congelados en una versión vieja justo cuando se
     // está corrigiendo algo en plena emergencia.
-    const fresh = new Request(request.url, {
-      cache: "no-store",
-      credentials: "same-origin",
-      headers: request.headers,
-      mode: "same-origin",
-      redirect: "follow",
-    });
-    const response = await withTimeout(fetch(fresh), NAV_TIMEOUT_MS);
+    // Se pide por URL, sin arrastrar las cabeceras de la navegación original:
+    // copiarlas no aporta nada aquí y puede hacer fallar la construcción de la
+    // petición, con el efecto desconcertante de servir el inicio en lugar de la
+    // página pedida.
+    const response = await withTimeout(
+      fetch(request.url, { cache: "no-store", credentials: "same-origin" }),
+      NAV_TIMEOUT_MS,
+    );
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {

@@ -89,6 +89,7 @@ function AyudarPage() {
 
   useEffect(() => {
     if (!user) return;
+    setLoading(true);
     return subscribeToOpenNeeds(
       (list) => {
         setNeeds(list);
@@ -98,8 +99,9 @@ function AyudarPage() {
         setError("No se pudo cargar el listado. Revisa la conexión.");
         setLoading(false);
       },
+      zone,
     );
-  }, [user]);
+  }, [user, zone]);
 
   // La ubicación es opcional: sin ella la lista sigue sirviendo, solo que
   // ordenada por hora en vez de por cercanía.
@@ -112,7 +114,6 @@ function AyudarPage() {
   const visible = useMemo(() => {
     const withDistance = needs
       .filter((n) => category === "todas" || n.category === category)
-      .filter((n) => zone === "todas" || zoneOf(n.location)?.id === zone)
       .filter(
         (n) =>
           !hideTaken ||
@@ -135,17 +136,7 @@ function AyudarPage() {
       return (b.need.createdAt ?? 0) - (a.need.createdAt ?? 0);
     });
     return withDistance;
-  }, [needs, category, hideTaken, me, zone]);
-
-  /** Cuántas hay por zona, para no ofrecer filtros que no llevan a nada. */
-  const porZona = useMemo(() => {
-    const cuenta = new Map<string, number>();
-    for (const n of needs) {
-      const z = zoneOf(n.location);
-      if (z) cuenta.set(z.id, (cuenta.get(z.id) ?? 0) + 1);
-    }
-    return cuenta;
-  }, [needs]);
+  }, [needs, category, hideTaken, me]);
 
   return (
     <main className="shell shell--wide" id="main">
@@ -211,7 +202,6 @@ function AyudarPage() {
             onClick={() => elegirZona(z.id)}
           >
             {z.short}
-            {porZona.get(z.id) ? ` · ${porZona.get(z.id)}` : ""}
           </button>
         ))}
       </div>

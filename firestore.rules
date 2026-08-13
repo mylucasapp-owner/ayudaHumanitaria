@@ -200,8 +200,9 @@ service cloud.firestore {
                incoming().keys().hasOnly([
                  'category', 'description', 'reference', 'location', 'peopleCount',
                  'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
-                 'verifiedByUid', 'claim', 'createdAt', 'updatedAt'
-               ]);
+                 'verifiedByUid', 'zone', 'claim', 'createdAt', 'updatedAt'
+               ]) &&
+               incoming().zone == current().zone;
       }
 
       function verificationUnchanged() {
@@ -280,8 +281,11 @@ service cloud.firestore {
         incoming().keys().hasOnly([
           'category', 'description', 'reference', 'location', 'peopleCount',
           'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
-          'verifiedByUid', 'claim', 'createdAt', 'updatedAt'
+          'verifiedByUid', 'zone', 'claim', 'createdAt', 'updatedAt'
         ]) &&
+        // Lista cerrada: la zona ordena el feed y un valor inventado dejaria la
+        // necesidad fuera de todos los filtros, invisible sin parecer rota.
+        incoming().zone in ['cali', 'pereira', 'choco', 'otra'] &&
         incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte'] &&
         incoming().description is string &&
         incoming().description.size() > 0 && incoming().description.size() <= 140 &&

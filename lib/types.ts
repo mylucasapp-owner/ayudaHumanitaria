@@ -128,6 +128,8 @@ export type Need = {
   verifiedByName: string | null;
   /** Queda registrado quién verificó, no solo con qué nombre firmó. */
   verifiedByUid: string | null;
+  /** Foco de la emergencia, calculado al publicar. Permite filtrar en la consulta. */
+  zone: string | null;
   claim: Claim | null;
   /**
    * La escritura todavía vive solo en este dispositivo. Solo lo informa

@@ -31,6 +31,7 @@ import {
   flagNeed,
   fetchContact,
   blockUser,
+  subscribeToOpenNeeds,
   ClaimTakenError,
   ClaimQuotaError,
   BlockedError,
@@ -42,7 +43,7 @@ const REPORT = {
   category: "medico",
   description: "Insulina para 2 adultos mayores",
   reference: "Los Aromos 120",
-  location: { lat: -33.45, lng: -70.66 },
+  location: { lat: 3.4372, lng: -76.5225 },
   peopleCount: 2,
   contact: { name: "Rosa", phone: "+56911112222" },
 };
@@ -285,6 +286,47 @@ test("la bitácora registra a qué damnificados accedió cada cuenta", async () 
   const registrados = [slot0.fields.needId.stringValue, slot1.fields.needId.stringValue];
 
   assert.deepEqual(registrados.sort(), [a, b].sort());
+});
+
+test("la zona se guarda al publicar y el feed filtra por ella en el servidor", async () => {
+  const rosa = await anonActor("rosa-zonas");
+
+  const enCali = await publish(rosa);
+  const enChoco = await publish(rosa, {
+    description: "Cobijas, familias durmiendo afuera",
+    location: { lat: 5.6947, lng: -76.6611 },
+  });
+
+  assert.equal((await adminGet(`needs/${enCali}`)).fields.zone.stringValue, "cali");
+  assert.equal((await adminGet(`needs/${enChoco}`)).fields.zone.stringValue, "choco");
+
+  // Filtrar en la consulta, y no después de traer las más recientes, es lo que
+  // impide que una zona con mucho volumen tape a las demás.
+  // La consulta se arma con `db()` en el momento de llamar, así que basta con
+  // que la inyección esté activa durante la llamada, no durante la espera.
+  const soloChoco = await new Promise((resolve, reject) => {
+    as(rosa, async () => {
+      const stop = subscribeToOpenNeeds(
+        (lista) => {
+          stop();
+          resolve(lista);
+        },
+        reject,
+        "choco",
+      );
+    });
+  });
+
+  const ids = soloChoco.map((n) => n.id);
+  assert.ok(ids.includes(enChoco), "falta la necesidad de Chocó");
+  assert.ok(!ids.includes(enCali), "se coló una necesidad de Cali");
+  assert.ok(soloChoco.every((n) => n.zone === "choco"));
+});
+
+test("una necesidad sin ubicación queda fuera de los focos, no perdida", async () => {
+  const rosa = await anonActor("rosa-sinubic");
+  const id = await publish(rosa, { location: null, reference: "Frente a la iglesia" });
+  assert.equal((await adminGet(`needs/${id}`)).fields.zone.stringValue, "otra");
 });
 
 test("el reporte queda congelado: nadie reescribe lo que otro pidió", async () => {

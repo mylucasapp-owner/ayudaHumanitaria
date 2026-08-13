@@ -25,17 +25,43 @@ Sin validadores nadie verifica nada, y la plataforma se vuelve una lista de
 reportes sin filtro. Es el paso más importante y el único verdaderamente
 bloqueante.
 
-Para cada coordinador de terreno (ONG, bomberos, defensa civil, junta de
-acción comunal):
+Un comando por organización:
 
-1. Consola → **Authentication** → *Add user* con correo y contraseña. Copia el UID.
-2. Consola → **Firestore** → colección `validators` → documento con ese UID:
-   ```
-   name: "Defensa Civil - Comuna 3"
-   zone: "Comuna 3"
-   ```
+```bash
+node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Cali" coordinacion@ong.org
+```
 
-Ten al menos dos o tres antes de difundir, y de zonas distintas.
+Crea la cuenta, la acredita y le envía a esa dirección un correo para que
+**definan ellos su propia contraseña**: así ninguna clave pasa por tus manos ni
+queda escrita en un chat.
+
+Si el coordinador no tiene acceso a correo —caso real en zona de desastre—
+agrega `--con-clave` y el script imprime una contraseña para entregar en
+persona. No la mandes a un grupo de WhatsApp: cualquiera del grupo podría
+descartar reportes reales.
+
+```bash
+node scripts/validadores.mjs listar
+node scripts/validadores.mjs revocar coordinacion@ong.org
+```
+
+Revocar quita los poderes de inmediato; la cuenta queda existiendo pero sin
+capacidad de verificar, descartar ni bloquear.
+
+**A quién acreditar.** Organizaciones con presencia física en la zona y un
+responsable con nombre: defensa civil, bomberos, Cruz Roja, ONG con operación
+en terreno, juntas de acción comunal, parroquias que ya estén coordinando
+entregas. El criterio no es el tamaño sino que alguien pueda ir a mirar.
+
+**Cuántos.** Al menos dos o tres antes de difundir, y de zonas distintas —Cali,
+Chocó y Pereira están a cientos de kilómetros y nadie verifica lo que no puede
+visitar. Un validador por zona es el mínimo para que la cola no se estanque.
+
+**Qué explicarles.** Que su trabajo es confirmar que la necesidad existe (por
+teléfono o yendo), descartar lo falso, liberar compromisos que no se
+concretaron y confirmar entregas. Que el panel les ordena las denuncias de la
+comunidad primero. Y que su cuenta queda registrada en cada acción que hacen:
+verificar deja constancia de quién fue.
 
 ### 2. Alerta de presupuesto
 

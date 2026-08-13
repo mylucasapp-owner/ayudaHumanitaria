@@ -25,13 +25,14 @@ const VALID = {
   category: "medico",
   description: "Insulina para 2 adultos mayores",
   reference: "Los Aromos 120",
-  location: { lat: -33.45, lng: -70.66 },
+  location: { lat: 3.4372, lng: -76.5225 },
   peopleCount: 2,
   status: "abierta",
   active: true,
   verified: false,
   verifiedByName: null,
   verifiedByUid: null,
+  zone: "cali",
   claim: null,
 };
 
