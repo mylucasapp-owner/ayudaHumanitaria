@@ -6,7 +6,7 @@ export const SITE = {
   authorFull: "Mateo CM — El Errante Coding Labs",
   url: "https://ayuda-humanitaria-89e72.web.app",
   /** Canal para ejercer derechos sobre datos personales y reportar abusos. */
-  contactEmail: "mateo.castilla@gmail.com",
+  contactEmail: "errantelegal@gmail.com",
   /** Línea única de emergencias en Colombia. */
   emergencyNumber: "123",
   updatedAt: "13 de agosto de 2026",
