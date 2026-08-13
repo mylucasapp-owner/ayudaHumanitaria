@@ -33,14 +33,23 @@ Un comando por organización:
 node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Cali" coordinacion@ong.org
 ```
 
-Crea la cuenta, la acredita y le envía a esa dirección un correo para que
-**definan ellos su propia contraseña**: así ninguna clave pasa por tus manos ni
-queda escrita en un chat.
+Crea la cuenta, la acredita e imprime un **enlace de un solo uso** para que
+definan ellos su propia contraseña. Se lo envías por WhatsApp: al caducar y
+servir una sola vez, es mucho más seguro que entregar una contraseña, que dura
+para siempre.
 
-Si el coordinador no tiene acceso a correo —caso real en zona de desastre—
-agrega `--con-clave` y el script imprime una contraseña para entregar en
-persona. No la mandes a un grupo de WhatsApp: cualquiera del grupo podría
-descartar reportes reales.
+Si el coordinador no puede abrir enlaces, agrega `--con-clave` y el script
+imprime una contraseña para entregar en persona. No la mandes a un grupo:
+cualquiera del grupo podría descartar reportes reales.
+
+> El script arma el enlace en vez de dejar que Firebase envíe su correo
+> automático. Ese correo apunta a una página alojada por Firebase que exige
+> recibir la llave del proyecto en la URL, y en proyectos configurados por API
+> esa llave llega vacía: el coordinador ve *"The selected page mode is invalid"*
+> y se queda afuera. Además esa página está en inglés. Si algún día quieres que
+> Firebase envíe el correo, hay que cambiar el *action URL* a
+> `https://ayuda-humanitaria-89e72.web.app/clave/` desde la consola
+> (Authentication → Templates), porque por API está bloqueado.
 
 ```bash
 node scripts/validadores.mjs listar

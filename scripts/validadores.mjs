@@ -12,16 +12,16 @@
  *   node scripts/validadores.mjs crear "Bomberos Quibdó" Chocó correo@x.org --con-clave
  *   node scripts/validadores.mjs revocar correo@ong.org
  *
- * Por defecto se le envía al coordinador un correo para que ponga su propia
- * contraseña: así ninguna clave viaja por WhatsApp ni queda en un chat. Con
- * `--con-clave` se genera una y se imprime, para quien no tenga acceso a correo
- * —que en zona de desastre es un caso real.
+ * Por defecto imprime un enlace de un solo uso para que el coordinador defina
+ * su propia contraseña: así ninguna clave permanente viaja por un chat. Con
+ * `--con-clave` se genera una contraseña, para quien no pueda abrir enlaces.
  */
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const PROJECT = "ayuda-humanitaria-89e72";
+const APP_URL = "https://ayuda-humanitaria-89e72.web.app";
 
 function env(nombre) {
   const archivo = new URL("../.env.local", import.meta.url);
@@ -156,24 +156,42 @@ async function crear(nombre, zona, correo, conClave) {
         "\n  grupo de WhatsApp: cualquiera del grupo podría descartar reportes.",
     );
   } else {
-    await pedir(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
+    // El enlace se arma aquí en vez de dejar que Firebase envíe el suyo.
+    //
+    // El correo automático apunta a una página alojada por Firebase que exige
+    // recibir la llave del proyecto en la URL, y en proyectos configurados por
+    // API esa llave llega vacía: el coordinador ve "The selected page mode is
+    // invalid" y se queda afuera. Además esa página está en inglés.
+    //
+    // Nuestra página trae la llave incorporada, así que el enlace solo necesita
+    // el código. Es de un solo uso y caduca: entregarlo por WhatsApp es mucho
+    // más seguro que entregar una contraseña, que dura para siempre.
+    const token = tokenAdmin();
+    const { oobLink } = await pedir(
+      `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:sendOobCode`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestType: "PASSWORD_RESET", email: correo }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "x-goog-user-project": PROJECT,
+        },
+        body: JSON.stringify({
+          requestType: "PASSWORD_RESET",
+          email: correo,
+          returnOobLink: true,
+        }),
       },
     );
+    const codigo = new URL(oobLink).searchParams.get("oobCode");
     console.log(
-      `\n  Se envió a ${correo} un correo para que defina su contraseña.` +
-        "\n  Así ninguna clave pasa por tus manos ni queda en un chat." +
-        "\n  Si no le llega, revisa spam o repite con --con-clave.",
+      "\n  Envíale este enlace para que defina su propia contraseña:\n" +
+        `\n  ${APP_URL}/clave/?mode=resetPassword&oobCode=${codigo}\n` +
+        "\n  Es de un solo uso y caduca. Ninguna contraseña pasa por tus manos.",
     );
   }
 
-  console.log(
-    "\n  Dile que entre a https://ayuda-humanitaria-89e72.web.app/validador/",
-  );
+  console.log(`\n  Después entrará por ${APP_URL}/validador/`);
 }
 
 async function revocar(correo) {

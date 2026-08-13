@@ -16,7 +16,7 @@
 */
 
 // Subir esta versión invalida todas las cachés en el próximo despliegue.
-const VERSION = "v5";
+const VERSION = "v7";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
@@ -47,6 +47,7 @@ const SHELL_URLS = [
   // coordinador con mala señal abría la portada en vez de su panel.
   "/validador/",
   "/legal/",
+  "/clave/",
   "/manifest.webmanifest",
   "/icon-192.png",
 ];
@@ -171,14 +172,20 @@ async function networkFirst(request) {
     // falla y el usuario termina en el inicio, sin entender por qué el enlace
     // que le pasaron por WhatsApp no lleva a ninguna parte. El shell es el
     // mismo para cualquier id: la página lee la query al montarse.
-    const cached =
-      (await cache.match(request, { ignoreSearch: true })) ||
-      (await cache.match("/"));
+    const cached = await cache.match(request, { ignoreSearch: true });
     if (cached) return cached;
+
+    // Deliberadamente NO se cae al inicio. Servir una página distinta de la
+    // pedida deja al usuario convencido de que el enlace no sirve, y es
+    // indistinguible de un error de quien se lo envió. Es mejor decir que no se
+    // pudo y ofrecer la salida.
     return new Response(
       "<!doctype html><meta charset=utf-8><title>Sin conexión</title>" +
-        '<body style="background:#000;color:#fff;font-family:system-ui;padding:24px">' +
-        "<h1>Sin conexión</h1><p>Vuelve a intentar cuando tengas señal.</p>",
+        '<body style="background:#000;color:#fff;font-family:system-ui;padding:24px;margin:0">' +
+        "<h1 style='font-size:28px'>No se pudo abrir esta página</h1>" +
+        "<p style='color:#9a9a9a;line-height:1.5'>Puede ser falta de señal. " +
+        "Reintenta cuando vuelva la conexión.</p>" +
+        "<p style='margin-top:24px'><a href='/' style='color:#ffb000'>Ir al inicio</a></p>",
       { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 503 },
     );
   }
