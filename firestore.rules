@@ -384,6 +384,42 @@ service cloud.firestore {
       }
     }
 
+    // Fallos del cliente. Sin esto no habia forma de enterarse de que la app se
+    // rompio para alguien: lo mas probable es que esa persona se vaya en
+    // silencio y el fallo parezca desinteres.
+    //
+    // Escribe cualquiera con sesion, porque el fallo que importa es justamente
+    // el de quien todavia no pudo hacer nada. La lista de campos es cerrada y
+    // no admite ningun texto escrito por una persona: ni descripciones, ni
+    // referencias, ni telefonos. Un registro de errores no es sitio para los
+    // datos de un damnificado.
+    match /diagnostics/{docId} {
+      allow read: if isValidator();
+
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'origen', 'mensaje', 'pila', 'ruta', 'agente', 'enLinea', 'extra', 'at'
+        ]) &&
+        request.resource.data.origen is string &&
+        request.resource.data.origen.size() <= 60 &&
+        request.resource.data.mensaje is string &&
+        request.resource.data.mensaje.size() <= 300 &&
+        request.resource.data.pila is string &&
+        request.resource.data.pila.size() <= 1200 &&
+        request.resource.data.ruta is string &&
+        request.resource.data.ruta.size() <= 120 &&
+        request.resource.data.agente is string &&
+        request.resource.data.agente.size() <= 200 &&
+        request.resource.data.enLinea is bool &&
+        request.resource.data.extra is string &&
+        request.resource.data.extra.size() <= 200 &&
+        request.resource.data.at == request.time;
+
+      // Un fallo anotado no se corrige ni se borra desde el cliente: si se
+      // pudiera, bastaria con reescribirlos para tapar un problema.
+      allow update, delete: if false;
+    }
+
     // Consulta de grupo para que el panel de validación vea todas las denuncias
     // sin recorrer necesidad por necesidad.
     match /{path=**}/flags/{flagUid} {

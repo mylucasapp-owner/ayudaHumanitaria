@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Diagnostics from "@/components/Diagnostics";
 import ServiceWorker from "@/components/ServiceWorker";
 import { SITE } from "@/lib/site";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         </a>
         {children}
         <ServiceWorker />
+        <Diagnostics />
       </body>
     </html>
   );

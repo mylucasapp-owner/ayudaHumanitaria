@@ -307,3 +307,59 @@ test("una denuncia no admite motivos inventados", async () => {
     ),
   );
 });
+
+const FALLO = {
+  origen: "window.error",
+  mensaje: "algo se rompio",
+  pila: "",
+  ruta: "/ayudar/",
+  agente: "Mozilla/5.0",
+  enLinea: true,
+  extra: "",
+};
+
+test("cualquiera puede anotar un fallo: el que importa es el de quien no pudo hacer nada", async () => {
+  const a = await anonActor("diag-ok");
+  assert.equal(
+    await denied(() =>
+      setDoc(doc(collection(a.db, "diagnostics")), { ...FALLO, at: serverTimestamp() }),
+    ),
+    false,
+  );
+});
+
+test("un fallo anotado no se reescribe ni se borra: taparlo seria borrar el rastro", async () => {
+  const a = await anonActor("diag-inmutable");
+  const ref = doc(collection(a.db, "diagnostics"));
+  await setDoc(ref, { ...FALLO, at: serverTimestamp() });
+  assert.ok(await denied(() => setDoc(ref, { ...FALLO, mensaje: "nada", at: serverTimestamp() })));
+  assert.ok(await denied(() => deleteDoc(ref)));
+});
+
+test("el registro de fallos no admite texto escrito por una persona", async () => {
+  const a = await anonActor("diag-campos");
+  const crear = (extra) =>
+    denied(() =>
+      setDoc(doc(collection(a.db, "diagnostics")), {
+        ...FALLO,
+        ...extra,
+        at: serverTimestamp(),
+      }),
+    );
+  // Un campo de mas es un campo por el que se podria colar un telefono o la
+  // descripcion de una necesidad.
+  assert.ok(await crear({ descripcion: "insulina para Ana" }), "campo extra");
+  assert.ok(await crear({ mensaje: "x".repeat(301) }), "mensaje sin tope");
+  assert.ok(await crear({ agente: "x".repeat(201) }), "agente sin tope");
+  assert.ok(await crear({ enLinea: "si" }), "tipo incorrecto");
+});
+
+test("solo un validador lee los fallos: un agente delata al dispositivo de alguien", async () => {
+  const a = await anonActor("diag-lectura");
+  const ref = doc(collection(a.db, "diagnostics"));
+  await setDoc(ref, { ...FALLO, at: serverTimestamp() });
+  assert.ok(await denied(() => getDoc(ref)), "un anonimo no deberia leerlos");
+
+  const v = await validatorActor("diag-validador");
+  assert.equal(await denied(() => getDoc(doc(v.db, ref.path))), false);
+});
