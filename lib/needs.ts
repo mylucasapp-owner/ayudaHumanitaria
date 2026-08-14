@@ -621,6 +621,22 @@ export async function resolveNeed(needId: string) {
   });
 }
 
+/**
+ * Solo validadores: pone el punto que faltaba.
+ *
+ * Cuatro de cada diez reportes reales llegan sin coordenadas y no salen en el
+ * mapa. El validador ya llama para verificar; marcar el punto en esa misma
+ * llamada convierte un dato flojo en uno bueno. Las reglas solo lo permiten si
+ * antes estaba vacío: rellenar un hueco no es reescribir lo que alguien pidió.
+ */
+export async function locateNeed(needId: string, point: GeoPoint) {
+  await updateDoc(doc(db(), "needs", needId), {
+    location: point,
+    zone: zoneOf(point)?.id ?? "otra",
+    updatedAt: serverTimestamp(),
+  });
+}
+
 /** Solo validadores: descarta un reporte que no pudo confirmarse. */
 export async function discardNeed(needId: string) {
   await updateDoc(doc(db(), "needs", needId), {

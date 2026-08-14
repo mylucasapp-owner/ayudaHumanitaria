@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import ConnectionState from "@/components/ConnectionState";
@@ -7,6 +8,7 @@ import FirebaseGate from "@/components/FirebaseGate";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, formatDistance, getCurrentPosition } from "@/lib/geo";
 import {
+  PLACE_GLYPH,
   PLACE_HINT,
   PLACE_KINDS,
   PLACE_LABEL,
@@ -15,6 +17,11 @@ import {
   type PlaceKind,
 } from "@/lib/places";
 import type { GeoPoint } from "@/lib/types";
+
+const PointsMap = dynamic(() => import("@/components/map/PointsMap"), {
+  ssr: false,
+  loading: () => <div className="map" />,
+});
 
 export default function Page() {
   return (
@@ -31,6 +38,8 @@ function DondeIrPage() {
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState<PlaceKind | "todos">("todos");
   const [me, setMe] = useState<GeoPoint | null>(null);
+  const [view, setView] = useState<"lista" | "mapa">("lista");
+  const [detalle, setDetalle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -70,6 +79,22 @@ function DondeIrPage() {
       });
   }, [places, kind, me]);
 
+  const marcadores = useMemo(
+    () =>
+      visible
+        .filter(({ place }) => place.location)
+        .map(({ place }) => ({
+          id: place.id,
+          point: place.location!,
+          glyph: PLACE_GLYPH[place.kind],
+          title: place.name,
+        })),
+    [visible],
+  );
+
+  /** Cuántos quedan fuera del mapa por no tener punto marcado. */
+  const sinPunto = visible.filter(({ place }) => !place.location).length;
+
   return (
     <main className="shell" id="main">
       <Link className="backlink" href="/">
@@ -105,9 +130,56 @@ function DondeIrPage() {
         ))}
       </div>
 
+      <div className="chips" role="group" aria-label="Vista">
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={view === "lista"}
+          onClick={() => setView("lista")}
+        >
+          Lista
+        </button>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={view === "mapa"}
+          onClick={() => setView("mapa")}
+        >
+          Mapa
+        </button>
+      </div>
+
       {error && <p className="notice notice--error">{error}</p>}
 
-      {loading ? (
+      {view === "mapa" && (
+        <>
+          <PointsMap
+            markers={marcadores}
+            me={me}
+            onSelect={(id) => setDetalle(id)}
+            ariaLabel="Mapa de puntos a donde ir"
+          />
+          {/* Un mapa que calla lo que no muestra es peor que una lista: quien
+              lo mira concluye que no hay nada más, y sí lo hay. */}
+          {sinPunto > 0 && (
+            <p className="meta center">
+              {sinPunto === 1
+                ? "1 punto no aparece en el mapa porque solo tiene dirección escrita."
+                : `${sinPunto} puntos no aparecen en el mapa porque solo tienen dirección escrita.`}{" "}
+              Míralos en la lista.
+            </p>
+          )}
+          {detalle && (
+            <PlaceCard
+              place={visible.find((v) => v.place.id === detalle)!.place}
+              km={visible.find((v) => v.place.id === detalle)!.km}
+            />
+          )}
+        </>
+      )}
+
+      {view === "lista" &&
+        (loading ? (
         <p className="empty">Cargando…</p>
       ) : visible.length === 0 ? (
         <p className="empty">
@@ -123,7 +195,7 @@ function DondeIrPage() {
             </li>
           ))}
         </ul>
-      )}
+      ))}
 
       <div className="spacer" />
       <p className="meta center">

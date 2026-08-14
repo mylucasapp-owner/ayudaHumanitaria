@@ -7,7 +7,13 @@ import CategoryIcon from "@/components/CategoryIcon";
 import ConnectionState from "@/components/ConnectionState";
 import FirebaseGate from "@/components/FirebaseGate";
 import StatusTags from "@/components/StatusTags";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth";
+
+const PointPicker = dynamic(() => import("@/components/map/PointPicker"), {
+  ssr: false,
+  loading: () => <div className="map" />,
+});
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import type { ContactResult } from "@/lib/needs";
 import { SITE } from "@/lib/site";
@@ -19,6 +25,7 @@ import {
   OfflineError,
   blockUser,
   claimNeed,
+  locateNeed,
   discardNeed,
   fetchContact,
   flagNeed,
@@ -151,6 +158,7 @@ function NeedDetail() {
   // Buscar a alguien no se "cubre": cambia qué acción va primero y cómo se
   // nombra la que da acceso al contacto.
   const busqueda = isSearch(need.category);
+  const [puntoNuevo, setPuntoNuevo] = useState<GeoPoint | null>(null);
   const delivered = need.status === "entregada";
   const closed = need.status === "resuelta" || need.status === "falsa";
   const canClaim =
@@ -386,6 +394,33 @@ function NeedDetail() {
           <>
             <hr className="hr" />
             <span className="label">Panel de validador · {validator!.name}</span>
+
+            {/* Cuatro de cada diez reportes llegan sin coordenadas y no salen
+                en el mapa, que es como la mayoría busca. El validador ya está
+                llamando para verificar: que marque el punto en esa misma
+                llamada. Solo aparece si falta, porque las reglas no dejan
+                sobrescribir el que la persona sí dio. */}
+            {!need.location && (
+              <div className="stack" style={{ gap: 8 }}>
+                <p className="notice notice--signal">
+                  Este reporte no tiene punto en el mapa, así que nadie lo ve
+                  ahí. Dice estar en{" "}
+                  <span className="strong">
+                    {need.reference || "un sitio sin referencia escrita"}
+                  </span>
+                  . Márcalo mientras hablas con quien lo pidió.
+                </p>
+                <PointPicker value={puntoNuevo} onChange={setPuntoNuevo} />
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  disabled={busy || !puntoNuevo}
+                  onClick={() => run(() => locateNeed(need.id, puntoNuevo!))}
+                >
+                  Guardar esta ubicación
+                </button>
+              </div>
+            )}
             {!need.verified && (
               <button
                 type="button"

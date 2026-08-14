@@ -188,11 +188,13 @@ service cloud.firestore {
       }
 
       // Nadie reescribe el hecho reportado: solo su ciclo de vida.
+      //
+      // La ubicacion es la unica excepcion, y solo hacia arriba: ver
+      // locateAction(). Rellenar un hueco no es reescribir lo que alguien pidio.
       function coreUnchanged() {
         return incoming().category    == current().category &&
                incoming().description == current().description &&
                incoming().reference   == current().reference &&
-               incoming().location    == current().location &&
                incoming().peopleCount == current().peopleCount &&
                incoming().ownerUid    == current().ownerUid &&
                incoming().createdAt   == current().createdAt &&
@@ -201,8 +203,7 @@ service cloud.firestore {
                  'category', 'description', 'reference', 'location', 'peopleCount',
                  'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
                  'verifiedByUid', 'zone', 'claim', 'createdAt', 'updatedAt'
-               ]) &&
-               incoming().zone == current().zone;
+               ]);
       }
 
       function verificationUnchanged() {
@@ -267,6 +268,28 @@ service cloud.firestore {
                claimUnchanged();
       }
 
+      // Un validador pone el punto que faltaba.
+      //
+      // Cuatro de cada diez reportes reales llegan sin coordenadas: el GPS falla
+      // bajo escombros, sin bateria o sin permiso. Esos no salen en el mapa, y
+      // el mapa es como la mayoria busca. El validador ya llama para verificar;
+      // que pueda marcar el punto en esa misma llamada convierte un dato flojo
+      // en uno bueno, con un humano respondiendo por el.
+      //
+      // SOLO SI ANTES ESTABA VACIO. Sobrescribir un punto que la persona si dio
+      // seria reescribir el hecho reportado, que es justo lo que coreUnchanged
+      // impide. Aqui se rellena un hueco, no se corrige a nadie.
+      function locateAction() {
+        return isValidator() &&
+               current().location == null &&
+               validLocation(incoming().location) &&
+               incoming().location != null &&
+               incoming().status == current().status &&
+               incoming().active == current().active &&
+               claimUnchanged() &&
+               verificationUnchanged();
+      }
+
       // Reporte que no pudo confirmarse.
       function discardAction() {
         return isValidator() &&
@@ -310,8 +333,23 @@ service cloud.firestore {
         incoming().updatedAt == request.time;
 
       allow update: if canWrite() && coreUnchanged() && (
-        takeAction() || releaseAction() || deliverAction() ||
-        resolveAction() || verifyAction() || discardAction()
+        (
+          // Todo lo demas deja la ubicacion y la zona intactas.
+          incoming().location == current().location &&
+          incoming().zone == current().zone &&
+          (takeAction() || releaseAction() || deliverAction() ||
+           resolveAction() || verifyAction() || discardAction())
+        )
+        ||
+        (
+          locateAction() &&
+          incoming().zone in ['valle', 'cauca', 'choco', 'narino', 'putumayo',
+            'risaralda', 'quindio', 'caldas', 'tolima', 'huila', 'antioquia',
+            'cundinamarca', 'boyaca', 'santander', 'nortedesantander',
+            'atlantico', 'bolivar', 'magdalena', 'cesar', 'cordoba', 'sucre',
+            'laguajira', 'sanandres', 'meta', 'casanare', 'arauca', 'vichada',
+            'guainia', 'guaviare', 'caqueta', 'vaupes', 'amazonas', 'otra']
+        )
       );
 
       // Nada se borra: el histórico es la auditoría de la emergencia.

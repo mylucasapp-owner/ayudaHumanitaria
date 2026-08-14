@@ -54,6 +54,15 @@ export const PLACE_HINT: Record<PlaceKind, string> = {
   comida: "Comida preparada",
 };
 
+/** Glifo de una letra para los pines del mapa, legible a 30px. */
+export const PLACE_GLYPH: Record<PlaceKind, string> = {
+  albergue: "A",
+  acopio: "D",
+  salud: "+",
+  agua: "≈",
+  comida: "C",
+};
+
 export type Place = {
   id: string;
   kind: PlaceKind;

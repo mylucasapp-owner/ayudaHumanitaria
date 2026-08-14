@@ -57,8 +57,14 @@ export default function PointPicker({
       change.current({ lat: e.latlng.lat, lng: e.latlng.lng }),
     );
     map.current = m;
-    setTimeout(() => m.invalidateSize(), 50);
+    // Mismo motivo que en PointsMap: Leaflet mide el contenedor una vez y no
+    // vuelve a mirar. Un timeout fijo acierta a veces; observar el tamaño
+    // acierta siempre. Aquí importa más: si el mapa se pinta a medias, el
+    // validador marca el punto mirando un trozo de calle equivocado.
+    const observer = new ResizeObserver(() => m.invalidateSize());
+    observer.observe(holder.current);
     return () => {
+      observer.disconnect();
       m.remove();
       map.current = null;
       marker.current = null;

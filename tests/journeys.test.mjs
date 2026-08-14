@@ -36,6 +36,7 @@ import {
   ClaimTakenError,
   ClaimQuotaError,
   BlockedError,
+  locateNeed,
 } from "../lib/needs.ts";
 
 after(cleanup);
@@ -390,4 +391,45 @@ test("una necesidad ya cerrada no se cuenta como duplicado", async () => {
 
   const parecidas = await as(rosa, () => findSimilarNeeds(punto, "refugio"));
   assert.equal(parecidas.length, 0, "una necesidad resuelta no debe frenar un pedido nuevo");
+});
+
+test("un validador pone el punto que faltaba, pero no reescribe el que ya habia", async () => {
+  const rosa = await anonActor("rosa-ubicar");
+
+  // Reporte sin coordenadas: el caso de 4 de cada 10 reales.
+  const sinPunto = await publish(rosa, {
+    description: "Agua, no pude dar ubicacion",
+    location: null,
+  });
+  assert.equal((await adminGet(`needs/${sinPunto}`)).fields.location.nullValue, null);
+
+  const v = await validatorActor("val-ubicar");
+  await as(v, () => locateNeed(sinPunto, { lat: 3.4372, lng: -76.5225 }));
+
+  const doc = await adminGet(`needs/${sinPunto}`);
+  assert.equal(doc.fields.location.mapValue.fields.lat.doubleValue, 3.4372);
+  // La zona se recalcula con el punto nuevo: de "otra" pasa a la real.
+  assert.equal(doc.fields.zone.stringValue, "valle");
+
+  // Sobre uno que YA tenia punto no puede: eso seria reescribir lo que la
+  // persona reporto, no rellenar un hueco.
+  const conPunto = await publish(rosa, {
+    description: "Esta si traia ubicacion",
+    location: { lat: 5.6947, lng: -76.6611 },
+  });
+  assert.ok(
+    await denied(() => as(v, () => locateNeed(conPunto, { lat: 3.4372, lng: -76.5225 }))),
+    "un validador no debe poder mover el punto que dio el damnificado",
+  );
+});
+
+test("un anonimo no puede ubicar un reporte ajeno", async () => {
+  const rosa = await anonActor("rosa-ubicar-2");
+  const sinPunto = await publish(rosa, { location: null });
+
+  const intruso = await anonActor("intruso-ubicar");
+  assert.ok(
+    await denied(() => as(intruso, () => locateNeed(sinPunto, { lat: 3.4, lng: -76.5 }))),
+    "sin acreditacion nadie clava un pin en el reporte de otro",
+  );
 });
