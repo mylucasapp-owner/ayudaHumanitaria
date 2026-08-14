@@ -311,9 +311,26 @@ a {
   touch-action: manipulation;
 }
 
+/* Qué cabe en la casilla, legible antes de elegirla. Sin mayúsculas ni
+   espaciado: es una frase para leer, no una etiqueta. */
+.cat__hint {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.3;
+  color: var(--dim);
+  max-width: 20ch;
+}
+
 .cat[aria-pressed="true"],
 .cat:active {
   background: var(--ink);
+  color: var(--void);
+}
+
+.cat[aria-pressed="true"] .cat__hint,
+.cat:active .cat__hint {
   color: var(--void);
 }
 

@@ -4,6 +4,7 @@ export const CATEGORIES = [
   "agua",
   "refugio",
   "transporte",
+  "personas",
   "otro",
 ] as const;
 
@@ -15,6 +16,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   agua: "AGUA / ALIMENTO",
   refugio: "REFUGIO",
   transporte: "TRANSPORTE",
+  personas: "BUSCO A ALGUIEN",
   otro: "OTRA AYUDA",
 };
 
@@ -25,7 +27,26 @@ export const CATEGORY_GLYPH: Record<Category, string> = {
   agua: "A",
   refugio: "R",
   transporte: "T",
+  personas: "P",
   otro: "O",
+};
+
+/**
+ * Qué cabe en cada casilla, visible ANTES de elegir.
+ *
+ * En los primeros reportes reales alguien pidió un veterinario y lo puso en
+ * MÉDICO, aunque OTRA AYUDA menciona veterinaria: los ejemplos solo aparecían
+ * después de elegir, o sea demasiado tarde. Quien está bajo presión escoge la
+ * casilla que suena más parecida y sigue.
+ */
+export const CATEGORY_SUMMARY: Record<Category, string> = {
+  medico: "Medicinas, curaciones, personal de salud",
+  rescate: "Personas atrapadas, en peligro ahora",
+  agua: "Agua potable, comida, elementos de aseo",
+  refugio: "Dónde dormir, carpas, cobijas, ropa",
+  transporte: "Traslados de personas o de ayuda",
+  personas: "Familiares o vecinos desaparecidos",
+  otro: "Peritajes, funerarias, veterinarios, lo demás",
 };
 
 /** Ejemplo mostrado como placeholder para que el reporte sea concreto. */
@@ -35,8 +56,22 @@ export const CATEGORY_HINT: Record<Category, string> = {
   agua: "Ej: agua potable para 12 personas, 2 bebés",
   refugio: "Ej: carpa y frazadas para familia de 5",
   transporte: "Ej: traslado de herido a hospital regional",
+  personas: "Ej: María Restrepo, 68 años, vista por última vez el martes",
   otro: "Ej: evaluar daños de la casa antes de volver a habitarla",
 };
+
+/**
+ * Buscar a alguien no es una necesidad material y no se "cubre".
+ *
+ * Apareció sola en los primeros reportes reales —"Busco familiares", metido en
+ * OTRA AYUDA por no haber dónde— y en un desastre va a llegar mucho más. Lo que
+ * necesita no es que un voluntario se comprometa a entregarla: necesita que la
+ * vea la mayor cantidad de gente posible. Por eso en estas fichas lo que se
+ * ofrece primero es difundir, no tomar.
+ */
+export function isSearch(category: Category): boolean {
+  return category === "personas";
+}
 
 /**
  * Qué cabe en "OTRA AYUDA". Una emergencia produce necesidades que no entran en

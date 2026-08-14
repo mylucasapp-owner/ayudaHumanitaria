@@ -21,6 +21,7 @@ import {
   CATEGORIES,
   CATEGORY_HINT,
   CATEGORY_LABEL,
+  CATEGORY_SUMMARY,
   OTHER_EXAMPLES,
   type Category,
   type GeoPoint,
@@ -179,6 +180,7 @@ function NecesitoFlow() {
               >
                 <CategoryIcon category={c} />
                 {CATEGORY_LABEL[c]}
+                <span className="cat__hint">{CATEGORY_SUMMARY[c]}</span>
               </button>
             ))}
           </div>

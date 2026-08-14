@@ -292,7 +292,7 @@ service cloud.firestore {
           'atlantico', 'bolivar', 'magdalena', 'cesar', 'cordoba', 'sucre',
           'laguajira', 'sanandres', 'meta', 'casanare', 'arauca', 'vichada',
           'guainia', 'guaviare', 'caqueta', 'vaupes', 'amazonas', 'otra'] &&
-        incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte', 'otro'] &&
+        incoming().category in ['medico', 'rescate', 'agua', 'refugio', 'transporte', 'personas', 'otro'] &&
         incoming().description is string &&
         incoming().description.size() > 0 && incoming().description.size() <= 140 &&
         incoming().reference is string && incoming().reference.size() <= 120 &&

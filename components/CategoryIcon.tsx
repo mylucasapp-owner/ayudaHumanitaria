@@ -37,6 +37,15 @@ const PATHS: Record<Category, React.ReactNode> = {
       <circle cx="17" cy="18.5" r="2" />
     </>
   ),
+  // Silueta de persona dentro de una lupa: se busca a alguien, no una cosa.
+  personas: (
+    <>
+      <circle cx="11" cy="9" r="3" />
+      <path d="M6 17c0-2.5 2.2-4 5-4s5 1.5 5 4" />
+      <circle cx="11" cy="12" r="8.5" />
+      <path d="M17.5 18.5 22 22" />
+    </>
+  ),
   // Tres puntos: lo que no cabe en las otras casillas. Deliberadamente neutro,
   // porque aquí entran cosas muy distintas —peritar una casa, un funeral, un
   // veterinario— y cualquier dibujo concreto excluiría a las demás.

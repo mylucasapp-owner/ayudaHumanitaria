@@ -31,6 +31,7 @@ import {
 } from "@/lib/needs";
 import {
   CATEGORY_LABEL,
+  isSearch,
   FLAG_LABEL,
   FLAG_REASONS,
   isClaimExpired,
@@ -147,6 +148,9 @@ function NeedDetail() {
   const expired = isClaimExpired(need);
   const takenByOther =
     need.status === "comprometida" && !expired && !isClaimer;
+  // Buscar a alguien no se "cubre": cambia qué acción va primero y cómo se
+  // nombra la que da acceso al contacto.
+  const busqueda = isSearch(need.category);
   const delivered = need.status === "entregada";
   const closed = need.status === "resuelta" || need.status === "falsa";
   const canClaim =
@@ -299,10 +303,16 @@ function NeedDetail() {
                 })
               }
             >
-              {busy ? "Reservando…" : "Yo lo cubro"}
+              {busy
+                ? "Reservando…"
+                : busqueda
+                  ? "Tengo información"
+                  : "Yo lo cubro"}
             </button>
             <p className="meta center">
-              Queda bloqueada 3 horas para que nadie duplique el esfuerzo.
+              {busqueda
+                ? "Te damos el contacto de la familia para que les cuentes lo que sabes."
+                : "Queda bloqueada 3 horas para que nadie duplique el esfuerzo."}
             </p>
           </>
         )}
@@ -354,7 +364,13 @@ function NeedDetail() {
               disabled={busy}
               onClick={() => run(() => resolveNeed(need.id))}
             >
-              {delivered ? "Confirmo que la recibí" : "Ya recibí esta ayuda"}
+              {/* A una persona no se la "recibe". Cerrar un reporte de
+                  búsqueda es decir que apareció. */}
+              {busqueda
+                ? "Ya la encontramos"
+                : delivered
+                  ? "Confirmo que la recibí"
+                  : "Ya recibí esta ayuda"}
             </button>
           </>
         )}
@@ -446,6 +462,13 @@ function NeedDetail() {
         {!closed && (
           <>
             <hr className="hr" />
+            {busqueda && (
+              <p className="notice notice--signal">
+                <span className="strong">Compartir es lo que más ayuda aquí.</span>{" "}
+                A una persona no la encuentra quien se compromete, sino quien la
+                vio. Reenvíalo a grupos de la zona.
+              </p>
+            )}
             {/* Reenviar es lo que hace que una necesidad encuentre a quien
                 puede cubrirla. En Colombia eso pasa por WhatsApp, y quien no
                 puede ayudar casi siempre conoce a alguien que sí. */}
