@@ -38,7 +38,16 @@ import {
 
 export const MAX_DESCRIPTION = 140;
 export const MAX_REFERENCE = 120;
-const FEED_LIMIT = 300;
+/**
+ * Tope de necesidades que trae el feed de una vez.
+ *
+ * Se exporta porque la pantalla tiene que poder avisar cuando lo alcanza. Sin
+ * ese aviso, pasadas 300 necesidades abiertas las más antiguas desaparecen sin
+ * que nadie lo note: no salen en la lista, no salen en el mapa, y quien las
+ * publicó cree que sigue visible. Una necesidad que nadie ve es una necesidad
+ * que nadie cubre.
+ */
+export const FEED_LIMIT = 300;
 
 function needsCol() {
   return collection(db(), "needs");

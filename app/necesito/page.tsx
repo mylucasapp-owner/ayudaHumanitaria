@@ -190,6 +190,37 @@ function NecesitoFlow() {
       {step === 1 && category && (
         <section className="stack">
           <h1 className="title">{CATEGORY_LABEL[category]}</h1>
+
+          {/* Esta app no rescata a nadie. Los bomberos y la defensa civil sí, y
+              se llega a ellos por el 123. Quien tiene un familiar atrapado no
+              debería gastar tres minutos llenando un formulario primero.
+
+              Aun así no se bloquea la publicación: en una emergencia grande la
+              línea se satura, y esa es justamente la grieta por la que existe
+              esto. La llamada va primero; el reporte sigue disponible debajo. */}
+          {category === "rescate" && (
+            <>
+              <p className="notice notice--error">
+                <span className="strong">
+                  Si hay alguien atrapado o en peligro ahora, llama primero al{" "}
+                  {SITE.emergencyNumber}.
+                </span>{" "}
+                Esta aplicación no reemplaza a los bomberos ni a la defensa
+                civil.
+              </p>
+              <a
+                className="btn btn--primary"
+                href={`tel:${SITE.emergencyNumber}`}
+              >
+                Llamar al {SITE.emergencyNumber}
+              </a>
+              <p className="meta">
+                Si la línea está saturada o ya llamaste, publica la necesidad
+                aquí abajo para que la vean quienes están cerca.
+              </p>
+              <hr className="hr" />
+            </>
+          )}
           <div className="field">
             <label className="label" htmlFor="desc">
               Describe la necesidad en una frase

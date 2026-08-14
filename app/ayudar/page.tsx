@@ -10,7 +10,7 @@ import NeedCard from "@/components/NeedCard";
 import { useAuth } from "@/lib/auth";
 import { distanceKm, getCurrentPosition } from "@/lib/geo";
 import { zoneById, zoneOf } from "@/lib/zones";
-import { subscribeToOpenNeeds } from "@/lib/needs";
+import { FEED_LIMIT, subscribeToOpenNeeds } from "@/lib/needs";
 import {
   CATEGORIES,
   CATEGORY_LABEL,
@@ -269,6 +269,18 @@ function AyudarPage() {
       </button>
 
       {error && <p className="notice notice--error">{error}</p>}
+
+      {/* El feed viene cortado y las que faltan son las más antiguas, que suelen
+          ser las que más llevan esperando. Decirlo es lo mínimo: en silencio,
+          quien publicó hace días cree que su necesidad sigue a la vista. */}
+      {needs.length >= FEED_LIMIT && (
+        <p className="notice notice--signal">
+          Hay más necesidades abiertas de las que caben en una lista. Estás
+          viendo las {FEED_LIMIT} más recientes
+          {zone === "todas" ? " de toda la región" : ""}. Filtra por zona o
+          categoría para no dejar fuera las que llevan más tiempo esperando.
+        </p>
+      )}
 
       {view === "mapa" && (
         <NeedsMap
