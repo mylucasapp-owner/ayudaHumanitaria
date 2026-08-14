@@ -146,16 +146,20 @@ test("el tope de cupo del cliente coincide con el de las reglas", async () => {
 });
 
 test("cada foco de la emergencia se reconoce por sus coordenadas", () => {
-  // Puntos reales dentro de cada ciudad afectada.
-  assert.equal(zoneOf({ lat: 3.4516, lng: -76.532 })?.id, "cali");
-  assert.equal(zoneOf({ lat: 4.8087, lng: -75.6906 })?.id, "pereira");
+  // Puntos reales dentro de las ciudades más golpeadas.
+  assert.equal(zoneOf({ lat: 3.4516, lng: -76.532 })?.id, "valle");
+  assert.equal(zoneOf({ lat: 4.8087, lng: -75.6906 })?.id, "risaralda");
   assert.equal(zoneOf({ lat: 5.6947, lng: -76.6611 })?.id, "choco");
+  // Municipios lejos de esos focos: antes caían todos en "otra zona", que es
+  // justo lo que dejaba invisible a la mayoría del país.
+  assert.equal(zoneOf({ lat: 1.1519, lng: -76.6483 })?.id, "putumayo");
+  assert.equal(zoneOf({ lat: 10.9685, lng: -74.7813 })?.id, "atlantico");
 });
 
-test("un punto lejano no se atribuye a ninguna zona", () => {
-  // Bogotá está a más de 250 km del foco más cercano.
-  assert.equal(zoneOf({ lat: 4.711, lng: -74.0721 }), null);
-  assert.equal(zoneLabel({ lat: 4.711, lng: -74.0721 }), "Otra zona");
+test("un punto fuera del país no se atribuye a ninguna zona", () => {
+  // Quito: la cobertura es nacional, así que "lejos" ya no es Bogotá.
+  assert.equal(zoneOf({ lat: -0.1807, lng: -78.4678 }), null);
+  assert.equal(zoneLabel({ lat: -0.1807, lng: -78.4678 }), "Otra zona");
 });
 
 test("una necesidad sin ubicación no inventa zona", () => {
@@ -165,14 +169,14 @@ test("una necesidad sin ubicación no inventa zona", () => {
 });
 
 test("entre dos zonas gana la más cercana, no la primera de la lista", () => {
-  // Punto intermedio Cali–Pereira, algo más arriba: debe caer en Pereira.
+  // Con 32 zonas superpuestas esto dejó de ser un detalle: casi cualquier punto
+  // cae dentro de varios círculos y el orden de la lista no debe decidir nada.
   const entreMedio = { lat: 4.5, lng: -76.0 };
   const z = zoneOf(entreMedio);
-  if (z) {
-    const dCali = distanceKm(entreMedio, ZONES.find((x) => x.id === "cali").center);
-    const dPereira = distanceKm(entreMedio, ZONES.find((x) => x.id === "pereira").center);
-    assert.equal(z.id, dCali < dPereira ? "cali" : "pereira");
-  }
+  assert.ok(z, "un punto en Colombia siempre debe recibir zona");
+  const menor = ZONES.filter((x) => distanceKm(entreMedio, x.center) <= x.radiusKm)
+    .sort((a, b) => distanceKm(entreMedio, a.center) - distanceKm(entreMedio, b.center))[0];
+  assert.equal(z.id, menor.id);
 });
 
 test("toda zona declara nombre corto, largo y radio utilizable", () => {

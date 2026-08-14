@@ -32,7 +32,7 @@ const VALID = {
   verified: false,
   verifiedByName: null,
   verifiedByUid: null,
-  zone: "cali",
+  zone: "valle",
   claim: null,
 };
 

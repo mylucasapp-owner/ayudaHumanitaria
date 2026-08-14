@@ -292,13 +292,13 @@ test("la bitácora registra a qué damnificados accedió cada cuenta", async () 
 test("la zona se guarda al publicar y el feed filtra por ella en el servidor", async () => {
   const rosa = await anonActor("rosa-zonas");
 
-  const enCali = await publish(rosa);
+  const enValle = await publish(rosa);
   const enChoco = await publish(rosa, {
     description: "Cobijas, familias durmiendo afuera",
     location: { lat: 5.6947, lng: -76.6611 },
   });
 
-  assert.equal((await adminGet(`needs/${enCali}`)).fields.zone.stringValue, "cali");
+  assert.equal((await adminGet(`needs/${enValle}`)).fields.zone.stringValue, "valle");
   assert.equal((await adminGet(`needs/${enChoco}`)).fields.zone.stringValue, "choco");
 
   // Filtrar en la consulta, y no después de traer las más recientes, es lo que
@@ -320,7 +320,7 @@ test("la zona se guarda al publicar y el feed filtra por ella en el servidor", a
 
   const ids = soloChoco.map((n) => n.id);
   assert.ok(ids.includes(enChoco), "falta la necesidad de Chocó");
-  assert.ok(!ids.includes(enCali), "se coló una necesidad de Cali");
+  assert.ok(!ids.includes(enValle), "se coló una necesidad del Valle");
   assert.ok(soloChoco.every((n) => n.zone === "choco"));
 });
 
