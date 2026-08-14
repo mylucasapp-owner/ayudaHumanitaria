@@ -228,6 +228,12 @@ function Panel({ name, zone }: { name: string; zone: string }) {
       <ConnectionState />
       {error && <p className="notice notice--error">{error}</p>}
 
+      {/* Lo que más piden los damnificados no es una necesidad: es saber a
+          dónde ir. Publicar esos puntos solo lo puede hacer un coordinador. */}
+      <Link className="btn" href="/validador/puntos/">
+        Publicar puntos a donde ir
+      </Link>
+
       <div className="card">
         <div className="stats">
           <Stat label="Pendientes" value={stats.total} />

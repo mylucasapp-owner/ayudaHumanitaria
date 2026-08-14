@@ -16,7 +16,7 @@
 */
 
 // Subir esta versión invalida todas las cachés en el próximo despliegue.
-const VERSION = "v7";
+const VERSION = "v8";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
@@ -43,6 +43,10 @@ const SHELL_URLS = [
   "/mis-reportes/",
   "/recuperar/",
   "/como-usar/",
+  // Sin señal es cuando más falta hace saber a dónde ir: quien huyó de su casa
+  // no tiene datos, y la lista ya vista sigue sirviendo desde la caché.
+  "/donde-ir/",
+  "/validador/puntos/",
   // Faltaban, y sin precargar el respaldo servía el inicio en su lugar. Un
   // coordinador con mala señal abría la portada en vez de su panel.
   "/validador/",

@@ -384,6 +384,66 @@ service cloud.firestore {
       }
     }
 
+    // Puntos a donde ir: albergues, acopios, salud, agua, comida.
+    //
+    // Los lee cualquiera; los escribe SOLO un validador, y es la diferencia mas
+    // importante con una necesidad. Un reporte falso de necesidad le cuesta un
+    // viaje a un voluntario que puede darse la vuelta. Un albergue falso manda a
+    // una familia caminando de noche, con ninos y sin bateria, a un sitio que no
+    // existe. La asimetria del dano justifica la asimetria del permiso.
+    match /places/{placeId} {
+      allow read: if signedIn();
+
+      // Copia local: la de /needs vive dentro de aquel match y no alcanza hasta
+      // aqui. Una funcion que no existe hace fallar la regla entera en silencio.
+      function puntoUbicable(loc) {
+        return loc == null || (
+          loc.keys().hasOnly(['lat', 'lng']) &&
+          loc.lat is number && loc.lat >= -90  && loc.lat <= 90 &&
+          loc.lng is number && loc.lng >= -180 && loc.lng <= 180
+        );
+      }
+
+      function camposValidos() {
+        return request.resource.data.keys().hasOnly([
+          'kind', 'name', 'reference', 'location', 'schedule', 'notes',
+          'phone', 'active', 'zone', 'createdByName', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.kind in ['albergue', 'acopio', 'salud', 'agua', 'comida'] &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 80 &&
+        request.resource.data.reference is string &&
+        request.resource.data.reference.size() <= 140 &&
+        request.resource.data.schedule is string &&
+        request.resource.data.schedule.size() <= 60 &&
+        request.resource.data.notes is string &&
+        request.resource.data.notes.size() <= 200 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() <= 25 &&
+        request.resource.data.active is bool &&
+        request.resource.data.createdByName is string &&
+        request.resource.data.createdByName.size() <= 60 &&
+        puntoUbicable(request.resource.data.location) &&
+        request.resource.data.zone in ['valle', 'cauca', 'choco', 'narino',
+          'putumayo', 'risaralda', 'quindio', 'caldas', 'tolima', 'huila',
+          'antioquia', 'cundinamarca', 'boyaca', 'santander',
+          'nortedesantander', 'atlantico', 'bolivar', 'magdalena', 'cesar',
+          'cordoba', 'sucre', 'laguajira', 'sanandres', 'meta', 'casanare',
+          'arauca', 'vichada', 'guainia', 'guaviare', 'caqueta', 'vaupes',
+          'amazonas', 'otra'];
+      }
+
+      allow create: if isValidator() && camposValidos();
+      allow update: if isValidator() && camposValidos();
+
+      // Cerrar un punto es marcarlo inactivo, no borrarlo: que un albergue haya
+      // existido y ya no reciba es informacion, y alguien puede llegar con la
+      // direccion apuntada en un papel. Borrar queda solo para corregir una
+      // captura recien hecha.
+      allow delete: if isValidator();
+    }
+
     // Fallos del cliente. Sin esto no habia forma de enterarse de que la app se
     // rompio para alguien: lo mas probable es que esa persona se vaya en
     // silencio y el fallo parezca desinteres.

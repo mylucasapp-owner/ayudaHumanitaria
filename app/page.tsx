@@ -19,6 +19,15 @@ export default function Home() {
           Necesito ayuda
           <span className="btn__note">Reportar una necesidad urgente</span>
         </Link>
+        {/* Va con los damnificados y antes de "quiero ayudar": quien acaba de
+            perder la casa no viene a reportar una necesidad, viene a saber a
+            dónde ir esta noche. Era la pregunta que más se repetía. */}
+        <Link className="btn btn--huge" href="/donde-ir/">
+          ¿A dónde ir?
+          <span className="btn__note">
+            Albergues, acopios, agua y comida cerca
+          </span>
+        </Link>
         <Link className="btn btn--huge" href="/ayudar/">
           Quiero ayudar
           <span className="btn__note">Ver necesidades cerca de mí</span>

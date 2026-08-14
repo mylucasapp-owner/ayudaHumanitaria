@@ -156,6 +156,13 @@ function AyudarPage() {
       }));
 
     withDistance.sort((a, b) => {
+      // Un rescate es vida o muerte y las demás no. Va primero aunque quede más
+      // lejos: el aviso del 123 en el reporte ya encamina a quien corresponde,
+      // y aquí lo que importa es que nadie tenga que bajar la pantalla para
+      // enterarse de que hay gente atrapada cerca.
+      const aRescate = a.need.category === "rescate";
+      const bRescate = b.need.category === "rescate";
+      if (aRescate !== bRescate) return aRescate ? -1 : 1;
       // Verificadas primero: son las que un humano ya confirmó en terreno.
       if (a.need.verified !== b.need.verified) return a.need.verified ? -1 : 1;
       if (a.km !== null && b.km !== null) return a.km - b.km;

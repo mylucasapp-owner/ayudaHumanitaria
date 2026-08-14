@@ -363,3 +363,76 @@ test("solo un validador lee los fallos: un agente delata al dispositivo de algui
   const v = await validatorActor("diag-validador");
   assert.equal(await denied(() => getDoc(doc(v.db, ref.path))), false);
 });
+
+const PUNTO = {
+  kind: "albergue",
+  name: "Coliseo El Pueblo",
+  reference: "Carrera 52 con calle 5, Cali",
+  location: { lat: 3.4372, lng: -76.5225 },
+  schedule: "24 horas",
+  notes: "Reciben familias con niños",
+  phone: "3001234567",
+  active: true,
+  zone: "valle",
+  createdByName: "Defensa Civil",
+};
+
+const punto = (extra = {}) => ({
+  ...PUNTO,
+  ...extra,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
+
+test("un anonimo no publica un albergue: a un albergue se llega caminando", async () => {
+  const a = await anonActor("punto-anon");
+  assert.ok(
+    await denied(() => setDoc(doc(collection(a.db, "places")), punto())),
+    "cualquiera podria mandar familias a una direccion inventada",
+  );
+});
+
+test("un validador publica un punto y cualquiera puede leerlo", async () => {
+  const v = await validatorActor("punto-validador");
+  const ref = doc(collection(v.db, "places"));
+  assert.equal(await denied(() => setDoc(ref, punto())), false);
+
+  // Leerlo sin acreditacion es el caso normal: el damnificado no es validador.
+  const a = await anonActor("punto-lector");
+  assert.equal(await denied(() => getDoc(doc(a.db, ref.path))), false);
+});
+
+test("un punto no admite campos de mas ni tipos raros", async () => {
+  const v = await validatorActor("punto-campos");
+  const crear = (extra) =>
+    denied(() => setDoc(doc(collection(v.db, "places")), punto(extra)));
+
+  assert.ok(await crear({ kind: "banco" }), "tipo inventado");
+  assert.ok(await crear({ name: "" }), "sin nombre");
+  assert.ok(await crear({ name: "x".repeat(81) }), "nombre larguisimo");
+  assert.ok(await crear({ zone: "narnia" }), "zona inventada");
+  assert.ok(await crear({ active: "si" }), "activo no booleano");
+  assert.ok(await crear({ cupo: 40 }), "campo de mas");
+  assert.ok(await crear({ location: { lat: 91, lng: 0 } }), "latitud imposible");
+});
+
+test("un anonimo tampoco cierra ni borra un punto ajeno", async () => {
+  const v = await validatorActor("punto-dueno");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  const a = await anonActor("punto-intruso");
+  const suyo = doc(a.db, ref.path);
+  assert.ok(await denied(() => updateDoc(suyo, { active: false })), "cerrarlo");
+  assert.ok(await denied(() => deleteDoc(suyo)), "borrarlo");
+});
+
+test("un punto sin ubicacion vale: muchos albergues se dan por direccion", async () => {
+  const v = await validatorActor("punto-sin-gps");
+  assert.equal(
+    await denied(() =>
+      setDoc(doc(collection(v.db, "places")), punto({ location: null, zone: "otra" })),
+    ),
+    false,
+  );
+});
