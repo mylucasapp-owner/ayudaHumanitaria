@@ -78,6 +78,85 @@ export const ZONES: Zone[] = [
   { id: "amazonas", label: "Amazonas", short: "Amazonas", center: { lat: -4.215, lng: -69.9406 }, radiusKm: 300 },
 ];
 
+/**
+ * Nombres escritos que delatan la zona cuando no hay coordenadas.
+ *
+ * Existe porque el GPS falla justo cuando más se necesita: bajo escombros, sin
+ * batería, o simplemente porque la persona no dio permiso. En los primeros
+ * reportes reales, 3 de cada 8 llegaron sin punto. Varios decían "Cali" en la
+ * referencia escrita y aun así quedaban en "otra zona", invisibles para un
+ * voluntario de Cali que filtrara por Valle.
+ *
+ * Se comparan palabras completas, nunca fragmentos: "Calle 56" contiene "cali"
+ * como subcadena y mandaría a media Colombia al Valle del Cauca.
+ */
+const NOMBRES: Record<string, string[]> = {
+  valle: ["valle", "valle del cauca", "cali", "buenaventura", "palmira", "buga", "tulua", "yumbo", "jamundi", "cartago"],
+  cauca: ["cauca", "popayan", "santander de quilichao", "guapi", "silvia"],
+  choco: ["choco", "quibdo", "istmina", "condoto", "riosucio", "bahia solano", "nuqui"],
+  narino: ["narino", "pasto", "tumaco", "ipiales", "tuquerres"],
+  putumayo: ["putumayo", "mocoa", "puerto asis", "sibundoy"],
+  risaralda: ["risaralda", "pereira", "dosquebradas", "santa rosa de cabal"],
+  quindio: ["quindio", "armenia", "calarca", "montenegro"],
+  caldas: ["caldas", "manizales", "la dorada", "chinchina", "riosucio caldas"],
+  tolima: ["tolima", "ibague", "espinal", "melgar", "honda"],
+  huila: ["huila", "neiva", "pitalito", "garzon"],
+  antioquia: ["antioquia", "medellin", "bello", "itagui", "envigado", "apartado", "turbo", "rionegro"],
+  cundinamarca: ["cundinamarca", "bogota", "soacha", "zipaquira", "girardot", "fusagasuga"],
+  boyaca: ["boyaca", "tunja", "duitama", "sogamoso", "chiquinquira"],
+  santander: ["santander", "bucaramanga", "floridablanca", "barrancabermeja", "giron"],
+  nortedesantander: ["norte de santander", "cucuta", "ocana", "pamplona"],
+  atlantico: ["atlantico", "barranquilla", "soledad", "malambo"],
+  bolivar: ["bolivar", "cartagena", "magangue", "turbaco", "el carmen de bolivar"],
+  magdalena: ["magdalena", "santa marta", "cienaga", "fundacion", "el banco"],
+  cesar: ["cesar", "valledupar", "aguachica", "codazzi"],
+  cordoba: ["cordoba", "monteria", "lorica", "sahagun", "cerete", "ayapel"],
+  sucre: ["sucre", "sincelejo", "corozal", "san marcos"],
+  laguajira: ["guajira", "la guajira", "riohacha", "maicao", "uribia"],
+  sanandres: ["san andres", "providencia"],
+  meta: ["meta", "villavicencio", "acacias", "granada meta", "puerto lopez"],
+  casanare: ["casanare", "yopal", "aguazul", "villanueva"],
+  arauca: ["arauca", "saravena", "tame"],
+  vichada: ["vichada", "puerto carreno"],
+  guainia: ["guainia", "inirida"],
+  guaviare: ["guaviare", "san jose del guaviare"],
+  caqueta: ["caqueta", "florencia", "san vicente del caguan"],
+  vaupes: ["vaupes", "mitu"],
+  amazonas: ["amazonas", "leticia"],
+};
+
+/** Sin tildes y en minúsculas: nadie escribe "Quibdó" con tilde en el celular. */
+function normalizar(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Deduce la zona de una referencia escrita. Devuelve null si nada calza, que es
+ * lo correcto: inventar una zona es peor que admitir que no se sabe.
+ */
+export function zoneFromText(texto: string | null | undefined): Zone | null {
+  if (!texto) return null;
+  const limpio = ` ${normalizar(texto)} `;
+  let mejor: { id: string; largo: number } | null = null;
+  for (const [id, nombres] of Object.entries(NOMBRES)) {
+    for (const nombre of nombres) {
+      // Palabra completa, con espacios alrededor: descarta "cali" dentro de
+      // "calle". Gana el nombre más largo, para que "san andres" no pierda
+      // contra un "andres" suelto de otra lista.
+      if (limpio.includes(` ${nombre} `) && (!mejor || nombre.length > mejor.largo)) {
+        mejor = { id, largo: nombre.length };
+      }
+    }
+  }
+  return mejor ? zoneById(mejor.id) : null;
+}
+
 /** Identificadores válidos, incluido el comodín de lo que cae fuera del país. */
 export const ZONE_IDS = [...ZONES.map((z) => z.id), "otra"];
 

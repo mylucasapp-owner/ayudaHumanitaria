@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { distanceKm, formatDistance, formatAgo, formatCountdown } from "../lib/geo.ts";
-import { ZONES, zoneOf, zoneLabel } from "../lib/zones.ts";
+import { ZONES, zoneFromText, zoneOf, zoneLabel } from "../lib/zones.ts";
 import {
   CATEGORIES,
   CATEGORY_LABEL,
@@ -225,4 +225,28 @@ test("el caché del service worker reconoce las teselas de cada proveedor", asyn
 test("el compromiso dura menos que el techo que imponen las reglas", () => {
   // Las reglas aceptan hasta 12 h; el cliente pide 3 h.
   assert.ok(CLAIM_TTL_MS < 12 * 3600 * 1000);
+});
+
+test("la referencia escrita ubica el reporte cuando no hubo GPS", () => {
+  assert.equal(zoneFromText("Barrio El Poblado, Cali")?.id, "valle");
+  assert.equal(zoneFromText("quibdo, sector la playa")?.id, "choco");
+  assert.equal(zoneFromText("MOCOA vereda alta")?.id, "putumayo");
+  // Sin tildes: nadie las escribe en el celular con prisa.
+  assert.equal(zoneFromText("Quibdó")?.id, "choco");
+  assert.equal(zoneFromText("Medellín, comuna 13")?.id, "antioquia");
+});
+
+test("la referencia escrita no inventa zonas a partir de fragmentos", () => {
+  // "Calle" contiene "cali". Si se comparara por subcadena, media Colombia
+  // terminaría en el Valle del Cauca.
+  assert.equal(zoneFromText("Calle 56 con carrera 8"), null);
+  assert.equal(zoneFromText("Vereda La Suiza"), null);
+  assert.equal(zoneFromText(""), null);
+  assert.equal(zoneFromText(null), null);
+});
+
+test("entre dos nombres que calzan gana el más específico", () => {
+  // "san andres" debe ganarle a un "andres" suelto de cualquier otra lista.
+  assert.equal(zoneFromText("San Andres isla")?.id, "sanandres");
+  assert.equal(zoneFromText("Norte de Santander, Cucuta")?.id, "nortedesantander");
 });

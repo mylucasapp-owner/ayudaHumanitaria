@@ -22,7 +22,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
 import { distanceKm } from "./geo";
-import { zoneOf } from "./zones";
+import { zoneFromText, zoneOf } from "./zones";
 import {
   CLAIM_LIMIT_PER_WINDOW,
   CLAIM_TTL_MS,
@@ -185,8 +185,11 @@ export async function createNeed(
     verifiedByName: null,
     verifiedByUid: null,
     claim: null,
-    // Se calcula al publicar para poder filtrar por zona en la consulta.
-    zone: zoneOf(input.location)?.id ?? "otra",
+    // Se calcula al publicar para poder filtrar por zona en la consulta. Si no
+    // hubo GPS se intenta con la referencia escrita: un reporte que dice "Cali"
+    // no debe quedar en "otra zona", invisible para quien filtra por Valle.
+    zone:
+      (zoneOf(input.location) ?? zoneFromText(input.reference))?.id ?? "otra",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
