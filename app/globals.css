@@ -430,16 +430,19 @@ a {
 
 /* ---------- Filtros ---------- */
 
+/* Los filtros se envuelven en vez de desplazarse en horizontal.
+ *
+ * Con desplazamiento, en un teléfono de 375px quedaban ocultos 837px de 343:
+ * más de la mitad. Es un patrón habitual y quien lo conoce lo desliza, pero
+ * aquí quien mira la pantalla puede ser una persona mayor, con una sola mano
+ * libre y sin costumbre de apps. Un filtro que no se ve es un filtro que no
+ * existe, y "AGUA POTABLE" o "COMIDA" no pueden depender de adivinar un gesto.
+ * El alto extra es barato; la vertical ya se desplaza de todos modos. */
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
   padding-bottom: 4px;
-  scrollbar-width: none;
-}
-
-.chips::-webkit-scrollbar {
-  display: none;
 }
 
 .chip {
