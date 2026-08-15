@@ -144,6 +144,19 @@ a {
   font-weight: 700;
 }
 
+/* Un botón que se lee como parte de la frase. Es un botón y no un enlace
+   porque no lleva a ninguna parte: mueve la pantalla hasta el control. */
+.enlace-meta {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

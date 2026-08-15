@@ -294,6 +294,7 @@ function NecesitoFlow() {
           <h1 className="title">¿Dónde y con quién?</h1>
 
           <button
+            id="ubicacion"
             type="button"
             className="btn btn--primary"
             onClick={locate}
@@ -382,6 +383,39 @@ function NecesitoFlow() {
           </div>
 
           {error && <p className="notice notice--error">{error}</p>}
+
+          {/* Aviso en letra pequeña, no una barrera.
+
+              Sin punto en el mapa la necesidad no sale en el mapa, y el mapa es
+              como busca la mayoría de quienes ayudan: queda solo en la lista y
+              se atiende más tarde. Merece decirse, porque mucha gente no dio
+              permiso al GPS sin saber lo que costaba.
+
+              Pero no intercepta el envío ni añade un toque. Quien reporta puede
+              estar bajo escombros o con un 3% de batería, y hacerle confirmar
+              dos veces para pedir ayuda sería cobrarle el error a quien menos
+              puede pagarlo. Lo lee quien quiera; publicar sigue a un toque. */}
+          {!location && reference.trim().length >= 4 && (
+            <p className="meta">
+              Sin marcar el punto, tu necesidad no aparece en el mapa y quien
+              pueda ayudarte tarda más en encontrarte.{" "}
+              <button
+                type="button"
+                className="enlace-meta"
+                onClick={() =>
+                  // Sin "smooth" a propósito: con la reducción de movimiento
+                  // activada —común en quien se marea con las animaciones, que
+                  // es parte de este público— el navegador ignora el
+                  // desplazamiento suave y el enlace no hace nada de nada.
+                  document
+                    .getElementById("ubicacion")
+                    ?.scrollIntoView({ block: "center" })
+                }
+              >
+                Marcarlo toma un segundo.
+              </button>
+            </p>
+          )}
 
           <button
             type="button"

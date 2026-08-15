@@ -128,7 +128,8 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
     setGeoMsg(null);
     setOk(null);
     setError(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Sin "smooth": se ignora con la reducción de movimiento activada.
+    window.scrollTo(0, 0);
   }
 
   async function publicar() {
