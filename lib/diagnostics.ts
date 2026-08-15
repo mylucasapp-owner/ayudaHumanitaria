@@ -1,5 +1,6 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db, isFirebaseConfigured } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db, isFirebaseConfigured } from "./firebase";
 
 /**
  * Registro de fallos del cliente.
@@ -19,6 +20,57 @@ import { db, isFirebaseConfigured } from "./firebase";
  * QUÉ SE GUARDA: solo campos técnicos, y la lista es cerrada tanto aquí como en
  * las reglas. Ningún texto escrito por una persona entra en este documento.
  */
+
+/**
+ * Cola en el teléfono para los fallos que no se pueden enviar todavía.
+ *
+ * La pantalla de error de React no pasa por el proveedor de sesión: ahí Firebase
+ * Auth ni se inicializa, y las reglas —con razón— no aceptan escrituras sin
+ * sesión. Abrirlas seria dejar un endpoint publico de escritura a internet.
+ *
+ * Así que el fallo se guarda y se envía en el siguiente arranque normal de la
+ * app, que es cuando ya hay sesión. Llega unos minutos tarde y llega completo,
+ * que es infinitamente mejor que no enterarse: una caída total de las fichas de
+ * necesidad estuvo en producción sin aparecer en ningún diagnóstico.
+ */
+const COLA = "ah.fallos.pendientes";
+const MAX_EN_COLA = 5;
+
+type Registro = Record<string, unknown>;
+
+function encolar(registro: Registro): void {
+  try {
+    const previos: Registro[] = JSON.parse(localStorage.getItem(COLA) ?? "[]");
+    localStorage.setItem(
+      COLA,
+      JSON.stringify([...previos, registro].slice(-MAX_EN_COLA)),
+    );
+  } catch {
+    /* sin almacenamiento el fallo se pierde; no hay nada mejor que hacer */
+  }
+}
+
+/** Vacía la cola. Si falla el envío, se deja para el próximo arranque. */
+async function vaciarCola(): Promise<void> {
+  let pendientes: Registro[] = [];
+  try {
+    pendientes = JSON.parse(localStorage.getItem(COLA) ?? "[]");
+  } catch {
+    return;
+  }
+  if (pendientes.length === 0) return;
+  try {
+    for (const r of pendientes) {
+      await addDoc(collection(db(), "diagnostics"), {
+        ...r,
+        at: serverTimestamp(),
+      });
+    }
+    localStorage.removeItem(COLA);
+  } catch {
+    /* se reintenta en el próximo arranque */
+  }
+}
 
 /** Tope por sesión. Un bucle de renderizado podría escribir miles si no. */
 const MAX_POR_SESION = 5;
@@ -60,7 +112,7 @@ export async function anotarFallo(
     vistos.add(huella);
     enviados += 1;
 
-    await addDoc(collection(db(), "diagnostics"), {
+    const registro = {
       origen: recortar(origen, 60),
       mensaje,
       pila: recortar(error instanceof Error ? (error.stack ?? "") : "", MAX_PILA),
@@ -76,6 +128,15 @@ export async function anotarFallo(
       ),
       enLinea: typeof navigator !== "undefined" ? navigator.onLine : true,
       extra: recortar(extra ?? "", 200),
+    };
+
+    // Sin sesión no se puede escribir: se guarda para el próximo arranque.
+    if (!auth().currentUser) {
+      encolar(registro);
+      return;
+    }
+    await addDoc(collection(db(), "diagnostics"), {
+      ...registro,
       at: serverTimestamp(),
     });
   } catch {
@@ -98,4 +159,16 @@ export function instalarDiagnostico(): void {
   window.addEventListener("unhandledrejection", (e) => {
     void anotarFallo("promesa.sin.capturar", e.reason);
   });
+
+  // En cuanto haya sesión se envía lo que quedó pendiente de una pantalla de
+  // error anterior, que es justo lo que antes se perdía entero.
+  if (isFirebaseConfigured) {
+    try {
+      onAuthStateChanged(auth(), (usuario) => {
+        if (usuario) void vaciarCola();
+      });
+    } catch {
+      /* sin auth no hay nada que vaciar */
+    }
+  }
 }

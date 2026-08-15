@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { anotarFallo } from "@/lib/diagnostics";
 
 /**
  * Última red de seguridad. Sin esto, cualquier excepción no prevista deja una
@@ -21,6 +22,12 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("fallo no controlado:", error);
+    // Un error de renderizado lo atrapa este boundary y NUNCA llega a
+    // window.error, así que el registro de fallos no lo veía. Una caída total
+    // de las fichas de necesidad estuvo en producción sin aparecer en ningún
+    // diagnóstico hasta que la reportó un usuario. Justo los fallos que dejan
+    // la pantalla inservible son los que más urge ver.
+    void anotarFallo("pantalla.de.error", error, error.digest ?? "");
   }, [error]);
 
   return (
