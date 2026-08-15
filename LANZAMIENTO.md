@@ -224,3 +224,72 @@ así que no hay recorte grande sin cambiar de arquitectura.
 
 Los polyfills (39 kB) llevan `noModule`: los navegadores modernos ni los
 descargan, así que no cuentan para casi nadie.
+
+
+## Operación diaria
+
+### Ahora, en este orden
+
+1. **Alerta de facturación.** Tres minutos, y es lo único que separa una factura
+   alta de una sorpresa grande.
+   https://console.cloud.google.com/billing/0178C5-E3FBB7-104BF1/budgets
+   Presupuesto sobre `ayuda-humanitaria-89e72`, 20 USD/mes, avisos al 50/90/100%.
+   **Alerta, no tope**: no conectes nada que desactive la facturación sola.
+   Apagaría la plataforma a mitad de una emergencia, justo cuando el gasto
+   significa que está sirviendo.
+
+2. **Publica los primeros puntos a donde ir.** El botón "¿A DÓNDE IR?" está en
+   la portada y hoy lleva a una página vacía. Es la pregunta que más repiten los
+   damnificados y ahora mismo no tiene respuesta. Con dos o tres albergues ya
+   deja de ser un callejón sin salida: `/validador/puntos/`.
+
+3. **Ubica los reportes que no salen en el mapa.** Hay abiertos sin coordenadas,
+   y el mapa es como busca la mayoría. Entra a cada ficha desde el panel y marca
+   el punto mientras hablas por teléfono con quien lo pidió.
+
+4. **Más validadores.** Hoy sois dos, y uno cubre solo Cali. Si alguien reporta
+   en otro departamento, nadie con conocimiento local puede verificarlo.
+
+5. **Un segundo dueño del proyecto en Firebase.** Acreditar validadores exige
+   sesión de `gcloud` como dueño: hoy eres el único que puede hacerlo, y eso
+   incluye las noches y los días sin señal.
+
+### Cada día, cinco minutos
+
+```bash
+node scripts/diagnosticos.mjs 24
+```
+
+Fallos del cliente de las últimas 24 horas, agrupados. **Vacío es la respuesta
+buena.** Si aparece algo repetido en varios dispositivos, es un problema real:
+quien falla no escribe a soporte, se va.
+
+Después, el panel `/validador/` en este orden, que es el del daño:
+
+1. **Denunciadas** — alguien fue y algo no cuadra.
+2. **Entregas por confirmar** — alguien dijo que entregó y nadie lo confirmó.
+3. **Sin noticias +7 días** — casi siempre se resolvieron por fuera y nadie las
+   cerró. Una llamada lo aclara. Si no se limpian, el mapa se llena de
+   fantasmas y los voluntarios dejan de creer en lo que leen.
+
+Y en `/validador/puntos/`, mira si hay **avisos** de gente que llegó y encontró
+el sitio lleno o cerrado. Los albergues cambian a diario; un dato viejo ahí
+manda a una familia a caminar para nada.
+
+### Cada semana
+
+- Gasto real en la consola de facturación, aunque no haya saltado ninguna alerta.
+- ¿Siguen vigentes los puntos publicados? Cerrar uno es un clic y no borra nada.
+
+### Si algo se rompe
+
+```bash
+npm run humo      # ¿abren todas las pantallas?
+node scripts/diagnosticos.mjs 6 --pilas
+```
+
+Y antes de subir cualquier cambio, sin excepción:
+
+```bash
+npm run check     # tipos + reglas de React + 86 pruebas
+```
