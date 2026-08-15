@@ -168,3 +168,23 @@ las teselas ya vistas, así que el consumo real es una fracción del tráfico.
 3. Panel de zona para validadores, que hoy ven las tres zonas mezcladas.
 4. Mapa auto-hospedado (PMTiles) para no depender de ningún proveedor. Hoy no
    hace falta: Stadia cubre el uso y el service worker guarda las teselas.
+
+
+## Antes de cada despliegue
+
+```bash
+npm run check     # tipos + reglas de React + 84 pruebas
+npm run build
+npx firebase deploy --only hosting,firestore:rules
+npm run humo      # abre cada pantalla en un navegador real
+```
+
+`npm run deploy` encadena `check` y el despliegue, así que la puerta no se
+puede saltar por descuido. La prueba de humo va **después**: comprueba lo que
+quedó publicado, no lo que había en el portátil.
+
+Esto existe por un incidente concreto. Un `useState` quedó debajo de un `return`
+temprano y todas las fichas de necesidad murieron en la pantalla de error, en
+producción, hasta que lo reportó un usuario. Los tipos pasaban y las 84 pruebas
+pasaban: ninguna monta una pantalla. Ahora `npm run lint` lo ve sin ejecutar
+nada, y `npm run humo` abre las once pantallas de verdad.

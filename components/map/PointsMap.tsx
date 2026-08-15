@@ -83,11 +83,14 @@ export default function PointsMap({
     const observer = new ResizeObserver(() => m.invalidateSize({ pan: false }));
     observer.observe(holder.current);
 
+    // Se captura aquí: en la limpieza, `markers.current` podría apuntar ya a
+    // otro mapa y dejaríamos marcadores vivos del anterior.
+    const marcadores = markers.current;
     return () => {
       observer.disconnect();
       m.remove();
       map.current = null;
-      markers.current.clear();
+      marcadores.clear();
       meMarker.current = null;
     };
   }, []);

@@ -622,6 +622,43 @@ export async function resolveNeed(needId: string) {
 }
 
 /**
+ * Acceso al contacto en una búsqueda de personas, sin bloquear a nadie.
+ *
+ * A una persona no la encuentra uno: la encuentran varios. Con el compromiso
+ * normal, el primero que decía "tengo información" dejaba fuera tres horas a
+ * quien la vio después —que suele ser quien sabe hacia dónde iba— y el reporte
+ * aparecía como TOMADA para todo el mundo.
+ *
+ * Se sigue pagando el cupo, que es lo que impide cosechar teléfonos, pero no se
+ * bloquea: la necesidad no cambia de estado y varias personas pueden tener el
+ * contacto a la vez.
+ */
+export async function registerInterest(
+  needId: string,
+  uid: string,
+  isValidator = false,
+) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new OfflineError("acceder al contacto");
+  }
+  const seq = isValidator
+    ? 0
+    : (rememberedSlot(needId) ?? (await reserveSlot(uid, needId)));
+  await setDoc(doc(db(), "needs", needId, "access", uid), {
+    needId,
+    uid,
+    seq,
+    at: serverTimestamp(),
+  });
+}
+
+/** Si esta persona ya pagó su acceso a esta búsqueda. */
+export async function hasInterest(needId: string, uid: string) {
+  const snap = await getDoc(doc(db(), "needs", needId, "access", uid));
+  return snap.exists();
+}
+
+/**
  * Solo validadores: pone el punto que faltaba.
  *
  * Cuatro de cada diez reportes reales llegan sin coordenadas y no salen en el

@@ -355,6 +355,49 @@ service cloud.firestore {
       // Nada se borra: el histórico es la auditoría de la emergencia.
       allow delete: if false;
 
+      // Acceso al contacto en una BUSQUEDA DE PERSONAS, sin bloquear a nadie.
+      //
+      // A una persona no la encuentra uno: la encuentran varios. El primero que
+      // la vio llama a las 8; la que la vio a las 11, caminando hacia otro lado,
+      // suele ser la mas valiosa. Con el compromiso normal esa segunda testigo
+      // se quedaba fuera tres horas, y para todos los demas el reporte decia
+      // TOMADA, asi que pasaban de largo.
+      //
+      // El bloqueo nunca fue el objetivo: era el peaje para racionar el telefono
+      // y que nadie lo cosechara. Ese peaje se sigue cobrando aqui —un cupo del
+      // ledger, anotado con su seq— pero sin exclusividad: varias personas
+      // pueden tener acceso a la vez y la necesidad no cambia de estado.
+      //
+      // Solo para categoria 'personas'. En una necesidad material el
+      // compromiso exclusivo si tiene sentido y esta puerta no debe existir.
+      match /access/{seekerUid} {
+        function needCategory() {
+          return get(/databases/$(database)/documents/needs/$(needId)).data.category;
+        }
+        // Mismo mecanismo que el compromiso: se señala un slot ya pagado cuyo
+        // needId coincide. Sin eso, cualquiera leeria todos los telefonos.
+        function paidFor(seq) {
+          return exists(/databases/$(database)/documents/ledger/$(uid())/slots/$(seq)) &&
+                 get(/databases/$(database)/documents/ledger/$(uid())/slots/$(seq)).data.needId == needId;
+        }
+
+        allow read: if isValidator() || (signedIn() && uid() == seekerUid);
+
+        allow create: if canWrite() &&
+          uid() == seekerUid &&
+          needCategory() == 'personas' &&
+          request.resource.data.keys().hasOnly(['needId', 'uid', 'seq', 'at']) &&
+          request.resource.data.needId == needId &&
+          request.resource.data.uid == uid() &&
+          request.resource.data.seq is int &&
+          request.resource.data.at == request.time &&
+          (isValidator() || paidFor(request.resource.data.seq));
+
+        // Inmutable: es la bitacora de quien alcanzo el telefono de una familia
+        // que esta buscando a alguien.
+        allow update, delete: if false;
+      }
+
       // --- Denuncias de la comunidad ---
       //
       // Un documento por persona y necesidad: la ruta impide que un mismo uid
@@ -391,7 +434,9 @@ service cloud.firestore {
         allow read: if signedIn() && (
           resource.data.ownerUid == uid() ||
           isValidator() ||
-          isActiveClaimer()
+          isActiveClaimer() ||
+          // Busquedas de personas: acceso sin exclusividad, ver /access.
+          exists(/databases/$(database)/documents/needs/$(needId)/access/$(uid()))
         );
 
         // Se crea junto con la necesidad, en el mismo lote. Las reglas evalúan

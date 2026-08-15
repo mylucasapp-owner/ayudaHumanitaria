@@ -6,7 +6,7 @@
  */
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 import {
   actor,
@@ -37,6 +37,7 @@ import {
   ClaimQuotaError,
   BlockedError,
   locateNeed,
+  registerInterest,
 } from "../lib/needs.ts";
 
 after(cleanup);
@@ -431,5 +432,55 @@ test("un anonimo no puede ubicar un reporte ajeno", async () => {
   assert.ok(
     await denied(() => as(intruso, () => locateNeed(sinPunto, { lat: 3.4, lng: -76.5 }))),
     "sin acreditacion nadie clava un pin en el reporte de otro",
+  );
+});
+
+test("en una busqueda de personas varios acceden al contacto sin bloquearse", async () => {
+  const maria = await anonActor("maria-busca");
+  const needId = await publish(maria, {
+    category: "personas",
+    description: "Busco a mi papa, 72 anios, visto en el puente",
+  });
+
+  // Carlos lo vio a las 8 y avisa.
+  const carlos = await anonActor("carlos-testigo");
+  await as(carlos, () => registerInterest(needId, carlos.uid));
+  assert.ok((await as(carlos, () => fetchContact(needId))).contact, "Carlos alcanza el contacto");
+
+  // La necesidad NO queda bloqueada: sigue abierta y sin claim.
+  const doc = await adminGet(`needs/${needId}`);
+  assert.equal(doc.fields.status.stringValue, "abierta");
+  assert.equal(doc.fields.claim.nullValue, null);
+
+  // Ana la vio a las 11, hacia otro lado. Antes se quedaba fuera tres horas.
+  const ana = await anonActor("ana-testigo");
+  await as(ana, () => registerInterest(needId, ana.uid));
+  assert.ok((await as(ana, () => fetchContact(needId))).contact, "Ana tambien alcanza el contacto");
+});
+
+test("la puerta de las busquedas no sirve para una necesidad material", async () => {
+  const rosa = await anonActor("rosa-material");
+  const needId = await publish(rosa, { category: "agua" });
+
+  const colado = await anonActor("colado");
+  assert.ok(
+    await denied(() => as(colado, () => registerInterest(needId, colado.uid))),
+    "en una necesidad material el compromiso exclusivo si tiene sentido",
+  );
+});
+
+test("el acceso a una busqueda se paga: sin cupo no hay telefono", async () => {
+  const maria = await anonActor("maria-busca-2");
+  const needId = await publish(maria, { category: "personas" });
+
+  const vivo = await anonActor("sin-pagar");
+  // Escribir el acceso a mano, senalando un slot que nunca se reservo.
+  assert.ok(
+    await denied(() =>
+      setDoc(doc(vivo.db, `needs/${needId}/access/${vivo.uid}`), {
+        needId, uid: vivo.uid, seq: 99, at: serverTimestamp(),
+      }),
+    ),
+    "sin cupo pagado no se alcanza el telefono de una familia",
   );
 });
