@@ -92,6 +92,9 @@ function DondeIrPage() {
     [visible],
   );
 
+  /** El punto tocado en el mapa, si todavía pasa los filtros actuales. */
+  const seleccionado = visible.find((v) => v.place.id === detalle) ?? null;
+
   /** Cuántos quedan fuera del mapa por no tener punto marcado. */
   const sinPunto = visible.filter(({ place }) => !place.location).length;
 
@@ -113,7 +116,10 @@ function DondeIrPage() {
           type="button"
           className="chip"
           aria-pressed={kind === "todos"}
-          onClick={() => setKind("todos")}
+          onClick={() => {
+            setKind("todos");
+            setDetalle(null);
+          }}
         >
           Todos
         </button>
@@ -123,7 +129,10 @@ function DondeIrPage() {
             type="button"
             className="chip"
             aria-pressed={kind === k}
-            onClick={() => setKind(k)}
+            onClick={() => {
+              setKind(k);
+              setDetalle(null);
+            }}
           >
             {PLACE_LABEL[k]}
           </button>
@@ -169,11 +178,11 @@ function DondeIrPage() {
               Míralos en la lista.
             </p>
           )}
-          {detalle && (
-            <PlaceCard
-              place={visible.find((v) => v.place.id === detalle)!.place}
-              km={visible.find((v) => v.place.id === detalle)!.km}
-            />
+          {/* Se busca sin dar por hecho que sigue ahí: tocar un pin y luego
+              cambiar el filtro de tipo dejaba `detalle` apuntando a un punto
+              que ya no está en la lista, y la pantalla se caía entera. */}
+          {seleccionado && (
+            <PlaceCard place={seleccionado.place} km={seleccionado.km} />
           )}
         </>
       )}

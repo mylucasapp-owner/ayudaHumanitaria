@@ -1,7 +1,6 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -187,9 +186,4 @@ export async function reopenPlace(placeId: string) {
     active: true,
     updatedAt: serverTimestamp(),
   });
-}
-
-/** Solo para corregir un error de captura reciente. */
-export async function deletePlace(placeId: string) {
-  await deleteDoc(doc(db(), "places", placeId));
 }
