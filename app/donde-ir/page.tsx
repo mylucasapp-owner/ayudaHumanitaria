@@ -10,6 +10,9 @@ import { distanceKm, formatDistance, getCurrentPosition } from "@/lib/geo";
 import {
   PLACE_GLYPH,
   PLACE_HINT,
+  PLACE_REPORT_LABEL,
+  PLACE_REPORT_REASONS,
+  reportPlace,
   PLACE_KINDS,
   PLACE_LABEL,
   subscribeToPlaces,
@@ -182,7 +185,7 @@ function DondeIrPage() {
               cambiar el filtro de tipo dejaba `detalle` apuntando a un punto
               que ya no está en la lista, y la pantalla se caía entera. */}
           {seleccionado && (
-            <PlaceCard place={seleccionado.place} km={seleccionado.km} />
+            <PlaceCard place={seleccionado.place} km={seleccionado.km} uid={user?.uid ?? null} />
           )}
         </>
       )}
@@ -200,7 +203,7 @@ function DondeIrPage() {
         <ul className="stack">
           {visible.map(({ place, km }) => (
             <li key={place.id}>
-              <PlaceCard place={place} km={km} />
+              <PlaceCard place={place} km={km} uid={user?.uid ?? null} />
             </li>
           ))}
         </ul>
@@ -216,7 +219,18 @@ function DondeIrPage() {
   );
 }
 
-function PlaceCard({ place, km }: { place: Place; km: number | null }) {
+function PlaceCard({
+  place,
+  km,
+  uid,
+}: {
+  place: Place;
+  km: number | null;
+  uid: string | null;
+}) {
+  const [avisando, setAvisando] = useState(false);
+  const [avisado, setAvisado] = useState(false);
+
   return (
     <div className="card stack" style={{ gap: 10 }}>
       <div className="row row--between" style={{ gap: 8 }}>
@@ -261,6 +275,54 @@ function PlaceCard({ place, km }: { place: Place; km: number | null }) {
         >
           Cómo llegar
         </a>
+      )}
+
+      {/* Quien llegó hasta la puerta sabe antes que nadie si el sitio se llenó
+          o cerró. Sin este camino de vuelta el dato envejece mal y la siguiente
+          familia camina para nada. El aviso no cierra el punto: lo marca para
+          que un coordinador llame y confirme. */}
+      {avisado ? (
+        <p className="meta">
+          Gracias. Un coordinador lo va a revisar. El punto sigue visible hasta
+          que lo confirmen, por si a otra persona sí la reciben.
+        </p>
+      ) : avisando ? (
+        <div className="stack" style={{ gap: 8 }}>
+          <span className="label">¿Qué pasó?</span>
+          {PLACE_REPORT_REASONS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              className="btn"
+              disabled={!uid}
+              onClick={async () => {
+                try {
+                  await reportPlace(place.id, uid!, r);
+                  setAvisado(true);
+                } catch {
+                  setAvisando(false);
+                }
+              }}
+            >
+              {PLACE_REPORT_LABEL[r]}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => setAvisando(false)}
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn--ghost"
+          onClick={() => setAvisando(true)}
+        >
+          Avisar que ya no recibe
+        </button>
       )}
     </div>
   );

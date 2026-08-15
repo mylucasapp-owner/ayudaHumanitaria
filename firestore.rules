@@ -480,6 +480,40 @@ service cloud.firestore {
       // direccion apuntada en un papel. Borrar queda solo para corregir una
       // captura recien hecha.
       allow delete: if isValidator();
+
+      // Avisos de que el punto ya no sirve.
+      //
+      // Los albergues se llenan y cierran todo el tiempo, y quien se entera es
+      // el que llego hasta la puerta, no el coordinador que lo publico desde
+      // otra ciudad. Sin este camino de vuelta el dato envejece mal y una
+      // familia camina hasta un sitio cerrado.
+      //
+      // Un documento por persona y punto: la ruta impide que un mismo uid
+      // acumule avisos. Y avisar NO cierra nada —eso sigue siendo del
+      // validador— porque si bastara con avisar, cualquiera vaciaria el mapa
+      // de albergues.
+      match /reports/{reporterUid} {
+        allow read: if isValidator() || (signedIn() && uid() == reporterUid);
+
+        allow create: if canWrite() &&
+          uid() == reporterUid &&
+          request.resource.data.keys().hasOnly(['placeId', 'uid', 'reason', 'at']) &&
+          request.resource.data.placeId == placeId &&
+          request.resource.data.uid == uid() &&
+          request.resource.data.reason in
+            ['lleno', 'cerrado', 'no-existe', 'datos-erroneos'] &&
+          request.resource.data.at == request.time;
+
+        // Se puede corregir el motivo, nunca suplantar a otro ni borrar el
+        // rastro de que alguien aviso.
+        allow update: if canWrite() && uid() == reporterUid &&
+          request.resource.data.keys().hasOnly(['placeId', 'uid', 'reason', 'at']) &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.reason in
+            ['lleno', 'cerrado', 'no-existe', 'datos-erroneos'];
+
+        allow delete: if false;
+      }
     }
 
     // Fallos del cliente. Sin esto no habia forma de enterarse de que la app se

@@ -436,3 +436,59 @@ test("un punto sin ubicacion vale: muchos albergues se dan por direccion", async
     false,
   );
 });
+
+test("cualquiera avisa que un punto ya no recibe, pero avisar no lo cierra", async () => {
+  const v = await validatorActor("aviso-dueno");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  const a = await anonActor("aviso-vecino");
+  const suyo = doc(a.db, `${ref.path}/reports/${a.uid}`);
+  assert.equal(
+    await denied(() =>
+      setDoc(suyo, {
+        placeId: ref.id, uid: a.uid, reason: "lleno", at: serverTimestamp(),
+      }),
+    ),
+    false,
+    "quien llego hasta la puerta debe poder avisar",
+  );
+
+  // Avisar NO cierra el punto: si bastara con eso, cualquiera vaciaria el mapa
+  // de albergues. Cerrar sigue siendo del validador.
+  assert.ok(
+    await denied(() => updateDoc(doc(a.db, ref.path), { active: false })),
+    "un aviso no debe poder cerrar el punto",
+  );
+});
+
+test("nadie avisa suplantando a otro, ni borra el rastro de su aviso", async () => {
+  const v = await validatorActor("aviso-dueno-2");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  const a = await anonActor("aviso-suplantador");
+  // Escribir en la ruta de otro uid: es la ruta la que ata el aviso a su autor.
+  assert.ok(
+    await denied(() =>
+      setDoc(doc(a.db, `${ref.path}/reports/otro-uid`), {
+        placeId: ref.id, uid: "otro-uid", reason: "lleno", at: serverTimestamp(),
+      }),
+    ),
+    "suplantacion",
+  );
+
+  const propio = doc(a.db, `${ref.path}/reports/${a.uid}`);
+  await setDoc(propio, {
+    placeId: ref.id, uid: a.uid, reason: "lleno", at: serverTimestamp(),
+  });
+  assert.ok(await denied(() => deleteDoc(propio)), "borrar el propio aviso");
+  assert.ok(
+    await denied(() =>
+      setDoc(propio, {
+        placeId: ref.id, uid: a.uid, reason: "inventado", at: serverTimestamp(),
+      }),
+    ),
+    "motivo fuera de la lista",
+  );
+});

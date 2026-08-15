@@ -15,10 +15,13 @@ import {
   MAX_PLACE_SCHEDULE,
   PLACE_KINDS,
   PLACE_LABEL,
+  PLACE_REPORT_LABEL,
+  subscribeToPlaceReports,
   reopenPlace,
   subscribeToPlaces,
   type Place,
   type PlaceKind,
+  type PlaceReport,
 } from "@/lib/places";
 import { zoneFromText, zoneOf } from "@/lib/zones";
 import type { GeoPoint } from "@/lib/types";
@@ -54,6 +57,7 @@ function PuntosPage() {
 
 function Editor({ nombreValidador }: { nombreValidador: string }) {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [reports, setReports] = useState<PlaceReport[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
@@ -71,6 +75,17 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
     return subscribeToPlaces(
       (list) => setPlaces(list),
       () => setError("No se pudo cargar la lista."),
+    );
+  }, []);
+
+  // Los avisos de la gente que llegó hasta la puerta. Son lo primero que hay
+  // que mirar: un albergue lleno que sigue publicado manda familias para nada.
+  useEffect(() => {
+    return subscribeToPlaceReports(
+      (list) => setReports(list),
+      () => {
+        /* sin avisos el panel sigue sirviendo */
+      },
     );
   }, []);
 
@@ -118,6 +133,16 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
       setBusy(false);
     }
   }
+
+  /** Avisos agrupados por punto, y los avisados primero en la lista. */
+  const porPunto = new Map<string, PlaceReport[]>();
+  for (const r of reports) {
+    porPunto.set(r.placeId, [...(porPunto.get(r.placeId) ?? []), r]);
+  }
+  const ordenados = [...places].sort(
+    (a, b) =>
+      (porPunto.get(b.id)?.length ?? 0) - (porPunto.get(a.id)?.length ?? 0),
+  );
 
   return (
     <main className="shell" id="main">
@@ -251,11 +276,27 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
         <p className="empty">Todavía no hay puntos publicados.</p>
       ) : (
         <ul className="stack">
-          {places.map((p) => (
+          {ordenados.map((p) => (
             <li key={p.id} className="card stack" style={{ gap: 8 }}>
-              <span className="label">{PLACE_LABEL[p.kind]}</span>
+              <span className="label">
+                {PLACE_LABEL[p.kind]}
+                {!p.active && " · CERRADO"}
+              </span>
               <span className="card__desc">{p.name}</span>
               {p.reference && <p className="meta">{p.reference}</p>}
+              {/* Quien llegó hasta la puerta se entera antes que nadie. */}
+              {(porPunto.get(p.id) ?? []).length > 0 && (
+                <p className="notice notice--signal">
+                  {(porPunto.get(p.id) ?? []).length} aviso(s):{" "}
+                  {[
+                    ...new Set(
+                      (porPunto.get(p.id) ?? []).map(
+                        (r) => PLACE_REPORT_LABEL[r.reason],
+                      ),
+                    ),
+                  ].join(" · ")}
+                </p>
+              )}
               <button
                 type="button"
                 className="btn"

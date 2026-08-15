@@ -1,7 +1,10 @@
 import {
   addDoc,
   collection,
+  collectionGroup,
   doc,
+  limit,
+  setDoc,
   onSnapshot,
   orderBy,
   query,
@@ -137,6 +140,77 @@ export function subscribeToPlaces(
   return onSnapshot(
     query(placesCol(), orderBy("name")),
     (snap) => onData(snap.docs.map(toPlace)),
+    onError,
+  );
+}
+
+/**
+ * Avisos de que un punto ya no sirve.
+ *
+ * Los albergues se llenan y cierran todo el tiempo, y quien se entera es el que
+ * llegó hasta la puerta, no el coordinador que lo publicó desde otra ciudad. Sin
+ * este camino de vuelta, el dato envejece mal y una familia camina hasta un
+ * sitio cerrado —justo el daño que quisimos evitar restringiendo quién publica.
+ *
+ * El aviso NO cierra el punto: lo marca para que un humano llame y confirme. Si
+ * bastara con avisar, cualquiera podría vaciar el mapa de albergues.
+ */
+export const PLACE_REPORT_REASONS = [
+  "lleno",
+  "cerrado",
+  "no-existe",
+  "datos-erroneos",
+] as const;
+
+export type PlaceReportReason = (typeof PLACE_REPORT_REASONS)[number];
+
+export const PLACE_REPORT_LABEL: Record<PlaceReportReason, string> = {
+  lleno: "Está lleno, no reciben más",
+  cerrado: "Está cerrado ahora",
+  "no-existe": "Fui y no existe",
+  "datos-erroneos": "La dirección o el teléfono están mal",
+};
+
+export type PlaceReport = {
+  placeId: string;
+  uid: string;
+  reason: PlaceReportReason;
+  at: number | null;
+};
+
+/** Un aviso por persona y punto: la ruta impide acumular avisos falsos. */
+export async function reportPlace(
+  placeId: string,
+  uid: string,
+  reason: PlaceReportReason,
+) {
+  await setDoc(doc(db(), "places", placeId, "reports", uid), {
+    placeId,
+    uid,
+    reason,
+    at: serverTimestamp(),
+  });
+}
+
+/** Para el panel: todos los avisos, sin recorrer punto por punto. */
+export function subscribeToPlaceReports(
+  onData: (reports: PlaceReport[]) => void,
+  onError: (e: unknown) => void,
+) {
+  return onSnapshot(
+    query(collectionGroup(db(), "reports"), orderBy("at", "desc"), limit(200)),
+    (snap) =>
+      onData(
+        snap.docs.map((d) => {
+          const f = d.data();
+          return {
+            placeId: String(f.placeId ?? ""),
+            uid: String(f.uid ?? ""),
+            reason: f.reason as PlaceReportReason,
+            at: f.at?.toMillis?.() ?? null,
+          };
+        }),
+      ),
     onError,
   );
 }
