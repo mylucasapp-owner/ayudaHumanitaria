@@ -25,7 +25,9 @@ import {
   OfflineError,
   blockUser,
   claimNeed,
+  hasInterest,
   locateNeed,
+  registerInterest,
   discardNeed,
   fetchContact,
   flagNeed,
@@ -72,6 +74,13 @@ function NeedDetail() {
   const [flagged, setFlagged] = useState(false);
   const [showFlagReasons, setShowFlagReasons] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** Punto que un validador marca cuando el reporte llego sin coordenadas. */
+  const [puntoNuevo, setPuntoNuevo] = useState<GeoPoint | null>(null);
+  /**
+   * En una busqueda de personas el acceso al contacto no bloquea la necesidad,
+   * asi que no se puede deducir del `claim`: hay que preguntarlo.
+   */
+  const [tengoAcceso, setTengoAcceso] = useState(false);
 
   useEffect(() => {
     try {
@@ -108,11 +117,27 @@ function NeedDetail() {
     return subscribeToMyFlag(id, user.uid, setFlagged);
   }, [id, user]);
 
+  // En una búsqueda de personas el acceso al contacto no bloquea la necesidad,
+  // así que no se puede deducir del `claim`: hay que preguntarlo.
+  useEffect(() => {
+    if (!id || !user) return;
+    let vivo = true;
+    hasInterest(id, user.uid)
+      .then((tiene) => vivo && setTengoAcceso(tiene))
+      .catch(() => {
+        /* sin acceso se sigue viendo el reporte, solo sin contacto */
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [id, user]);
+
+
   const isOwner = !!user && !!need && need.ownerUid === user.uid;
   const isClaimer =
     !!user && !!need?.claim && need.claim.uid === user.uid && !isClaimExpired(need);
   const isValidator = !!validator;
-  const canSeeContact = isOwner || isClaimer || isValidator;
+  const canSeeContact = isOwner || isClaimer || isValidator || tengoAcceso;
 
   // El contacto vive en un documento aparte; se pide solo cuando corresponde.
   useEffect(() => {
@@ -158,7 +183,6 @@ function NeedDetail() {
   // Buscar a alguien no se "cubre": cambia qué acción va primero y cómo se
   // nombra la que da acceso al contacto.
   const busqueda = isSearch(need.category);
-  const [puntoNuevo, setPuntoNuevo] = useState<GeoPoint | null>(null);
   const delivered = need.status === "entregada";
   const closed = need.status === "resuelta" || need.status === "falsa";
   const canClaim =
@@ -275,7 +299,41 @@ function NeedDetail() {
       <div className="spacer" />
 
       <section className="stack">
-        {canClaim && (
+        {/* Una búsqueda no se "toma": se aporta información, y varias personas
+            pueden aportarla a la vez. Por eso no pide nombre ni bloquea nada,
+            solo cobra el mismo cupo que protege los teléfonos. */}
+        {busqueda && !tengoAcceso && !isOwner && (
+          <>
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={busy || !user}
+              onClick={() =>
+                run(async () => {
+                  await registerInterest(need.id, user!.uid, isValidator);
+                  setTengoAcceso(true);
+                })
+              }
+            >
+              {busy ? "Un momento…" : "Tengo información"}
+            </button>
+            <p className="meta center">
+              Te damos el contacto de la familia para que les cuentes lo que
+              sabes. No bloquea el reporte: si otra persona la vio después,
+              también podrá avisarles.
+            </p>
+          </>
+        )}
+
+        {busqueda && tengoAcceso && !isOwner && (
+          <p className="notice notice--signal">
+            Tienes el contacto de la familia abajo. Cuéntales cualquier cosa que
+            recuerdes, aunque te parezca poco: la hora, el lugar, hacia dónde
+            iba.
+          </p>
+        )}
+
+        {canClaim && !busqueda && (
           <>
             <div className="field">
               <label className="label" htmlFor="claim-name">
@@ -311,16 +369,10 @@ function NeedDetail() {
                 })
               }
             >
-              {busy
-                ? "Reservando…"
-                : busqueda
-                  ? "Tengo información"
-                  : "Yo lo cubro"}
+              {busy ? "Reservando…" : "Yo lo cubro"}
             </button>
             <p className="meta center">
-              {busqueda
-                ? "Te damos el contacto de la familia para que les cuentes lo que sabes."
-                : "Queda bloqueada 3 horas para que nadie duplique el esfuerzo."}
+              Queda bloqueada 3 horas para que nadie duplique el esfuerzo.
             </p>
           </>
         )}
