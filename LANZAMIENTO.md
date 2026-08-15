@@ -188,3 +188,39 @@ temprano y todas las fichas de necesidad murieron en la pantalla de error, en
 producción, hasta que lo reportó un usuario. Los tipos pasaban y las 84 pruebas
 pasaban: ninguna monta una pantalla. Ahora `npm run lint` lo ve sin ejecutar
 nada, y `npm run humo` abre las once pantallas de verdad.
+
+
+## El mapa puede apagarse en silencio
+
+Las teselas vienen de Stadia Maps y se autentican **por dominio**, no por llave:
+la URL en `.env.local` no lleva ninguna. Comprobado con `curl`: desde
+`ayuda-humanitaria-89e72.web.app` devuelven 200, y sin ese origen, 401.
+
+Tres formas de quedarse sin fondo de mapa, y ninguna avisa por correo:
+
+1. **Mover la app a un dominio propio** sin registrarlo antes en Stadia. Es la
+   más probable, porque es un cambio que se hace con prisa y el mapa deja de
+   funcionar sin que nada falle en el despliegue.
+2. **Navegadores que quitan la cabecera Referer** por privacidad. Afecta solo a
+   esos usuarios, así que no se nota mirando el propio teléfono.
+3. **Agotar el tope del plan gratuito** con difusión masiva.
+
+Qué pasa cuando ocurre: el mapa queda gris pero **los puntos siguen bien
+colocados**, y tras cuatro teselas fallidas aparece un aviso que remite a la
+vista de lista, que no depende de ningún proveedor. Comprobado apuntando a un
+host inexistente.
+
+Qué hacer: registrar el dominio nuevo en Stadia **antes** de cambiarlo, y
+revisar el consumo si la difusión crece. Cambiar de proveedor es una variable de
+entorno —`NEXT_PUBLIC_TILE_URL` y `NEXT_PUBLIC_TILE_ATTRIBUTION`— sin tocar
+código; la atribución es condición de licencia y hay que cambiarla con él.
+
+## Cuánto pesa abrir la app
+
+Unos 222 kB comprimidos la primera vez, y después el service worker la sirve del
+teléfono. El reparto: Firestore 77 kB, React 54 kB, Auth 26 kB y el resto
+repartido. Todo es carga útil —Firestore es lo que hace que funcione sin señal—
+así que no hay recorte grande sin cambiar de arquitectura.
+
+Los polyfills (39 kB) llevan `noModule`: los navegadores modernos ni los
+descargan, así que no cuentan para casi nadie.

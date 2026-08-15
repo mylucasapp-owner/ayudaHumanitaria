@@ -19,7 +19,6 @@ import {
   type QueryDocumentSnapshot,
   type Timestamp,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
 import { distanceKm } from "./geo";
 import { zoneFromText, zoneOf } from "./zones";
@@ -787,8 +786,11 @@ export async function recoverNeed(rawCode: string): Promise<string> {
     throw new RecoveryError("El código tiene 8 caracteres, como ABCD-2345.");
   }
   try {
+    // Igual que en firebase.ts: se trae solo aquí, que es el único sitio que
+    // lo necesita, para que no pese en el resto de la app.
+    const { httpsCallable } = await import("firebase/functions");
     const call = httpsCallable<{ codigo: string }, { needId: string }>(
-      functions(),
+      await functions(),
       "recuperarReporte",
     );
     const { data } = await call({ codigo });

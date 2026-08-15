@@ -4,11 +4,7 @@ import {
   ReCaptchaEnterpriseProvider,
 } from "firebase/app-check";
 import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
-import {
-  connectFunctionsEmulator,
-  getFunctions,
-  type Functions,
-} from "firebase/functions";
+import type { Functions } from "firebase/functions";
 import {
   connectFirestoreEmulator,
   initializeFirestore,
@@ -100,10 +96,21 @@ export function db(): Firestore {
   return dbRef;
 }
 
-/** Las funciones viven junto a la base de datos, en us-east1. */
-export function functions(): Functions {
+/**
+ * Las funciones viven junto a la base de datos, en us-east1.
+ *
+ * Se carga a demanda, no al arrancar. `firebase/functions` solo hace falta para
+ * canjear un código de recuperación, pero importándolo arriba viajaba en el
+ * trozo común de TODAS las páginas —incluida la de reportar, que es la que abre
+ * alguien bajo escombros con mala señal. Es asíncrona por eso: quien la use
+ * paga esa espera, y nadie más paga los kilobytes.
+ */
+export async function functions(): Promise<Functions> {
   if (injected) return injected.functions;
   if (!functionsRef) {
+    const { getFunctions, connectFunctionsEmulator } = await import(
+      "firebase/functions"
+    );
     functionsRef = getFunctions(app(), "us-east1");
     if (useEmulators) connectFunctionsEmulator(functionsRef, "127.0.0.1", 5001);
   }
