@@ -492,3 +492,44 @@ test("nadie avisa suplantando a otro, ni borra el rastro de su aviso", async () 
     "motivo fuera de la lista",
   );
 });
+
+test("un validador corrige un punto sin cerrarlo ni recrearlo", async () => {
+  const v = await validatorActor("punto-corrector");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto({ phone: "3000000000" }));
+
+  // Corregir en su sitio conserva el identificador: los enlaces ya compartidos
+  // siguen funcionando y los avisos de la gente no se pierden.
+  assert.equal(
+    await denied(() =>
+      updateDoc(doc(v.db, ref.path), {
+        ...PUNTO,
+        phone: "3009998877",
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      }),
+    ),
+    false,
+  );
+
+  const guardado = await adminGet(`places/${ref.id}`);
+  assert.equal(guardado.fields.phone.stringValue, "3009998877");
+});
+
+test("un anonimo no corrige un punto: seguiria siendo un dato en el que se confia", async () => {
+  const v = await validatorActor("punto-corrector-2");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  const a = await anonActor("punto-corrector-falso");
+  assert.ok(
+    await denied(() =>
+      updateDoc(doc(a.db, ref.path), {
+        ...PUNTO,
+        reference: "Direccion inventada",
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      }),
+    ),
+  );
+});

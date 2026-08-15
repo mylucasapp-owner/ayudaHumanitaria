@@ -88,6 +88,44 @@ function recortar(texto: unknown, tope: number): string {
 }
 
 /**
+ * Saca algo legible de lo que sea que se rechazó.
+ *
+ * No todo lo que llega aquí es un Error. Una promesa puede rechazarse con un
+ * Event —una imagen que no cargó, una petición abortada— y `String(evento)` da
+ * "[object Event]", que no le sirve a nadie. El primer fallo real registrado en
+ * producción fue exactamente eso: se supo que algo falló y nada más.
+ */
+function describir(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  if (typeof Event !== "undefined" && error instanceof Event) {
+    const destino = error.target as
+      | { tagName?: string; src?: string; url?: string }
+      | undefined;
+    const que =
+      destino?.src ?? destino?.url ?? destino?.tagName ?? "sin destino";
+    return `evento ${error.type} en ${que}`;
+  }
+
+  if (error && typeof error === "object") {
+    const o = error as { code?: unknown; message?: unknown; name?: unknown };
+    // Los errores de Firebase traen `code`, que es lo que de verdad identifica
+    // el problema ("permission-denied", "unavailable").
+    if (o.code || o.message) {
+      return [o.code, o.name, o.message].filter(Boolean).join(" · ");
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return Object.prototype.toString.call(error);
+    }
+  }
+
+  return String(error);
+}
+
+/**
  * Anota un fallo. Nunca lanza: un error dentro del registro de errores dejaría
  * a la persona sin la pantalla que estaba usando, que es peor que no enterarse.
  */
@@ -100,10 +138,7 @@ export async function anotarFallo(
     if (!isFirebaseConfigured) return;
     if (enviados >= MAX_POR_SESION) return;
 
-    const mensaje = recortar(
-      error instanceof Error ? error.message : error,
-      MAX_MENSAJE,
-    );
+    const mensaje = recortar(describir(error), MAX_MENSAJE);
 
     // Se agrupa por origen y mensaje: mil repeticiones del mismo fallo no
     // aportan más que la primera, y sí cuestan escrituras.

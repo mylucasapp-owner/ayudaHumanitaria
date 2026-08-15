@@ -245,6 +245,29 @@ export async function createPlace(input: PlaceInput) {
 }
 
 /**
+ * Corregir un punto ya publicado.
+ *
+ * Un teléfono mal tecleado o un horario que cambió no deberían obligar a cerrar
+ * el punto y crearlo de nuevo: eso le cambia el identificador, y quien lo tenía
+ * abierto o compartido se queda con un enlace muerto. Además los avisos de la
+ * gente cuelgan del punto, y perderlos borra el rastro de que alguien fue y
+ * encontró algo distinto.
+ */
+export async function updatePlace(placeId: string, input: PlaceInput) {
+  await updateDoc(doc(db(), "places", placeId), {
+    kind: input.kind,
+    name: input.name.trim().slice(0, MAX_PLACE_NAME),
+    reference: input.reference.trim().slice(0, MAX_PLACE_REFERENCE),
+    location: input.location,
+    schedule: input.schedule.trim().slice(0, MAX_PLACE_SCHEDULE),
+    notes: input.notes.trim().slice(0, MAX_PLACE_NOTES),
+    phone: input.phone.trim().slice(0, 25),
+    zone: input.zone,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
  * Cerrar un punto. No se borra: que un albergue haya existido y ya no reciba es
  * información, y alguien puede llegar con la dirección apuntada en un papel.
  */

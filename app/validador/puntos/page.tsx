@@ -19,6 +19,7 @@ import {
   subscribeToPlaceReports,
   reopenPlace,
   subscribeToPlaces,
+  updatePlace,
   type Place,
   type PlaceKind,
   type PlaceReport,
@@ -70,6 +71,8 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
   const [phone, setPhone] = useState("");
   const [point, setPoint] = useState<GeoPoint | null>(null);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  /** Id del punto que se está corrigiendo, o null si se está creando uno nuevo. */
+  const [editando, setEditando] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeToPlaces(
@@ -100,35 +103,70 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
     }
   }
 
+  function limpiar() {
+    setEditando(null);
+    setKind("albergue");
+    setName("");
+    setReference("");
+    setSchedule("");
+    setNotes("");
+    setPhone("");
+    setPoint(null);
+    setGeoMsg(null);
+  }
+
+  /** Carga un punto en el formulario para corregirlo. */
+  function editar(p: Place) {
+    setEditando(p.id);
+    setKind(p.kind);
+    setName(p.name);
+    setReference(p.reference);
+    setSchedule(p.schedule);
+    setNotes(p.notes);
+    setPhone(p.phone);
+    setPoint(p.location);
+    setGeoMsg(null);
+    setOk(null);
+    setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function publicar() {
     if (name.trim().length < 3) return;
     setBusy(true);
     setError(null);
     setOk(null);
+    const datos = {
+      kind,
+      name,
+      reference,
+      location: point,
+      schedule,
+      notes,
+      phone,
+      // Igual que en las necesidades: si no hay punto, la referencia escrita
+      // sirve para ubicarlo por departamento.
+      zone: (zoneOf(point) ?? zoneFromText(reference))?.id ?? "otra",
+      createdByName: nombreValidador,
+    };
     try {
-      await createPlace({
-        kind,
-        name,
-        reference,
-        location: point,
-        schedule,
-        notes,
-        phone,
-        // Igual que en las necesidades: si no hay punto, la referencia escrita
-        // sirve para ubicarlo por departamento.
-        zone: (zoneOf(point) ?? zoneFromText(reference))?.id ?? "otra",
-        createdByName: nombreValidador,
-      });
-      setOk(`Publicado: ${name}`);
-      setName("");
-      setReference("");
-      setSchedule("");
-      setNotes("");
-      setPhone("");
-      setPoint(null);
-      setGeoMsg(null);
+      if (editando) {
+        // Se corrige en su sitio en vez de cerrar y recrear: recrear cambia el
+        // identificador y deja muerto cualquier enlace ya compartido, y de paso
+        // se perderían los avisos que la gente dejó en ese punto.
+        await updatePlace(editando, datos);
+        setOk(`Corregido: ${name}`);
+      } else {
+        await createPlace(datos);
+        setOk(`Publicado: ${name}`);
+      }
+      limpiar();
     } catch {
-      setError("No se pudo publicar. Revisa la conexión.");
+      setError(
+        editando
+          ? "No se pudo guardar la corrección. Revisa la conexión."
+          : "No se pudo publicar. Revisa la conexión.",
+      );
     } finally {
       setBusy(false);
     }
@@ -159,6 +197,15 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
       <ConnectionState />
       {error && <p className="notice notice--error">{error}</p>}
       {ok && <p className="notice notice--signal">{ok}</p>}
+
+      {/* Sin esto, quien corrige puede creer que está creando otro y acabar con
+          dos albergues iguales, uno con el dato viejo. */}
+      {editando && (
+        <p className="notice notice--signal">
+          Estás corrigiendo un punto ya publicado. Al guardar, los cambios se ven
+          de inmediato en “¿A dónde ir?”.
+        </p>
+      )}
 
       <section className="stack">
         <div className="chips" role="group" aria-label="Tipo de punto">
@@ -264,8 +311,17 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
           disabled={busy || name.trim().length < 3}
           onClick={publicar}
         >
-          {busy ? "Publicando…" : "Publicar punto"}
+          {busy
+            ? "Guardando…"
+            : editando
+              ? "Guardar correcciones"
+              : "Publicar punto"}
         </button>
+        {editando && (
+          <button type="button" className="btn btn--ghost" onClick={limpiar}>
+            Cancelar y publicar uno nuevo
+          </button>
+        )}
       </section>
 
       <div className="spacer" />
@@ -297,15 +353,20 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
                   ].join(" · ")}
                 </p>
               )}
-              <button
-                type="button"
-                className="btn"
-                onClick={() =>
-                  p.active ? closePlace(p.id) : reopenPlace(p.id)
-                }
-              >
-                {p.active ? "Cerrar este punto" : "Reabrir"}
-              </button>
+              <div className="btn-row">
+                <button type="button" className="btn" onClick={() => editar(p)}>
+                  Corregir
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() =>
+                    p.active ? closePlace(p.id) : reopenPlace(p.id)
+                  }
+                >
+                  {p.active ? "Cerrar" : "Reabrir"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
