@@ -311,22 +311,30 @@ que hacerla a mano ANTES de difundir el dominio nuevo.
 Ambos se añadieron sin tocar los existentes, así que el `.web.app` sigue
 funcionando igual.
 
-### Pendiente, en este orden
+### También hecho
 
-1. **Stadia Maps.** Añade `ayudahumanitaria.info` y `www.ayudahumanitaria.info`
-   a los dominios permitidos de tu cuenta. Si se olvida, el mapa queda gris —la
-   app funciona, pero pierde la mitad de su utilidad— y no llega ningún aviso.
-2. **Firebase Console → Hosting → Añadir dominio personalizado.** No se puede
-   por CLI. Firebase da unos registros DNS.
-3. **Squarespace → DNS.** Pega esos registros. Añade también `www` apuntando al
-   mismo sitio: mucha gente lo escribe.
-4. **Esperar el certificado**, hasta 24 horas. Hasta que no esté, el dominio da
-   error de seguridad, que en una cadena de WhatsApp es peor que no tenerlo.
-5. **Comprobar antes de difundir:**
-   ```bash
-   BASE=https://ayudahumanitaria.info npm run humo
-   ```
-   Y entrar a mano al mapa: si sale gris, falta el paso 1.
+- **Stadia Maps**: property nueva con `*.ayudahumanitaria.info`. Comprobado que
+  sirve teselas tanto a `www` como al dominio sin `www` —el comodín cubre los
+  dos, cosa que no se daba por supuesta.
+- **Dominio en Firebase Hosting** y sus registros en Squarespace, incluido `www`.
+  Comprobado: el apex resuelve a Firebase y `www` apunta al sitio.
+
+### Lo único que falta
+
+**El certificado.** Firebase lo emite solo y puede tardar horas. Mientras tanto,
+`http://` ya responde 301 hacia `https://`, pero `https://` no contesta: el
+dominio da error de seguridad, que en una cadena de WhatsApp es peor que no
+tener dominio. **No difundas el enlace nuevo hasta que esto pase:**
+
+```bash
+curl -sI https://ayudahumanitaria.info | head -1
+```
+
+Cuando devuelva `HTTP/2 200`, la comprobación completa:
+
+```bash
+BASE=https://ayudahumanitaria.info npm run humo
+```
 
 ### Lo que NO hay que cambiar
 
