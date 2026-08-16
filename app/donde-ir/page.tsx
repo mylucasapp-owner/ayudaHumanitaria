@@ -245,6 +245,23 @@ function PlaceCard({
       <div className="card__desc">{place.name}</div>
       <p className="meta">{PLACE_HINT[place.kind]}</p>
 
+      {/* La confianza se dice, no se insinúa. Un punto sacado de una lista
+          oficial casi siempre es bueno, pero nadie se ha parado en la puerta:
+          callarlo haría que una familia camine con una certeza que no tenemos,
+          y ocultarlo haría que no se entere de un albergue que sí existe. */}
+      {place.confirmed ? (
+        <p className="meta">
+          <span className="tag tag--solid">CONFIRMADO EN TERRENO</span>{" "}
+          {place.confirmedByName && `por ${place.confirmedByName}`}
+        </p>
+      ) : (
+        <p className="notice notice--signal">
+          <span className="strong">Sin confirmar en terreno.</span> El dato viene
+          de una lista, no de alguien que haya ido.{" "}
+          {place.phone ? "Llamá antes de salir." : "Si podés, preguntá antes de salir."}
+        </p>
+      )}
+
       {place.reference && (
         <p className="meta">
           <span className="strong">Dónde:</span> {place.reference}

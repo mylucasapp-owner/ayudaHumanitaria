@@ -541,8 +541,13 @@ service cloud.firestore {
       function camposValidos() {
         return request.resource.data.keys().hasOnly([
           'kind', 'name', 'reference', 'location', 'schedule', 'notes',
-          'phone', 'active', 'zone', 'createdByName', 'createdAt', 'updatedAt'
+          'phone', 'active', 'confirmed', 'confirmedByName', 'zone',
+          'createdByName', 'createdAt', 'updatedAt'
         ]) &&
+        request.resource.data.confirmed is bool &&
+        (request.resource.data.confirmedByName == null ||
+         (request.resource.data.confirmedByName is string &&
+          request.resource.data.confirmedByName.size() <= 60)) &&
         request.resource.data.kind in ['albergue', 'acopio', 'salud', 'agua', 'comida'] &&
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
@@ -597,7 +602,7 @@ service cloud.firestore {
           request.resource.data.placeId == placeId &&
           request.resource.data.uid == uid() &&
           request.resource.data.reason in
-            ['lleno', 'cerrado', 'no-existe', 'datos-erroneos'] &&
+            ['funciona', 'lleno', 'cerrado', 'no-existe', 'datos-erroneos'] &&
           request.resource.data.at == request.time;
 
         // Se puede corregir el motivo, nunca suplantar a otro ni borrar el
@@ -606,7 +611,7 @@ service cloud.firestore {
           request.resource.data.keys().hasOnly(['placeId', 'uid', 'reason', 'at']) &&
           request.resource.data.uid == resource.data.uid &&
           request.resource.data.reason in
-            ['lleno', 'cerrado', 'no-existe', 'datos-erroneos'];
+            ['funciona', 'lleno', 'cerrado', 'no-existe', 'datos-erroneos'];
 
         allow delete: if false;
       }

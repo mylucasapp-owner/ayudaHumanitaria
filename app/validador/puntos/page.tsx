@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { getCurrentPosition } from "@/lib/geo";
 import {
   closePlace,
+  confirmPlace,
   createPlace,
   MAX_PLACE_NAME,
   MAX_PLACE_NOTES,
@@ -352,6 +353,24 @@ function Editor({ nombreValidador }: { nombreValidador: string }) {
                       ),
                     ),
                   ].join(" · ")}
+                </p>
+              )}
+              {/* Quien de verdad verifica es quien llega. El coordinador no
+                  recorre cuarenta sitios: recoge lo que le cuentan los que ya
+                  fueron, y lo marca. */}
+              {!p.confirmed && (
+                <button
+                  type="button"
+                  className="btn btn--primary"
+                  onClick={() => confirmPlace(p.id, nombreValidador)}
+                >
+                  Confirmar que existe y recibe
+                </button>
+              )}
+              {p.confirmed && (
+                <p className="meta">
+                  Confirmado en terreno
+                  {p.confirmedByName ? ` por ${p.confirmedByName}` : ""}.
                 </p>
               )}
               <div className="btn-row">

@@ -83,6 +83,21 @@ export type Place = {
    */
   phone: string;
   active: boolean;
+  /**
+   * Si alguien de campo confirmó que el sitio existe y recibe.
+   *
+   * Nace de una tension real. Restringir la publicacion a coordinadores evita
+   * mandar familias a un sitio falso, pero deja sin publicar informacion que
+   * casi seguro es buena —una lista de la alcaldia, un mensaje de la defensa
+   * civil— porque nadie ha podido ir a pararse en la puerta. Y una familia que
+   * no se entera de un albergue real tambien duerme afuera.
+   *
+   * La salida no es publicar sin filtro ni callarse: es publicar diciendo la
+   * verdad sobre lo que se sabe. Un punto sin confirmar se muestra con la
+   * advertencia de llamar antes de ir; uno confirmado dice quien lo confirmo.
+   */
+  confirmed: boolean;
+  confirmedByName: string | null;
   zone: string | null;
   createdByName: string;
   createdAt: number | null;
@@ -117,6 +132,8 @@ function toPlace(d: {
     notes: (v.notes as string) ?? "",
     phone: (v.phone as string) ?? "",
     active: (v.active as boolean) ?? true,
+    confirmed: (v.confirmed as boolean) ?? false,
+    confirmedByName: (v.confirmedByName as string | null) ?? null,
     zone: (v.zone as string | null) ?? null,
     createdByName: (v.createdByName as string) ?? "",
     createdAt: ms(v.createdAt),
@@ -156,6 +173,7 @@ export function subscribeToPlaces(
  * bastara con avisar, cualquiera podría vaciar el mapa de albergues.
  */
 export const PLACE_REPORT_REASONS = [
+  "funciona",
   "lleno",
   "cerrado",
   "no-existe",
@@ -165,6 +183,7 @@ export const PLACE_REPORT_REASONS = [
 export type PlaceReportReason = (typeof PLACE_REPORT_REASONS)[number];
 
 export const PLACE_REPORT_LABEL: Record<PlaceReportReason, string> = {
+  funciona: "Fui y sí está funcionando",
   lleno: "Está lleno, no reciben más",
   cerrado: "Está cerrado ahora",
   "no-existe": "Fui y no existe",
@@ -237,6 +256,10 @@ export async function createPlace(input: PlaceInput) {
     notes: input.notes.trim().slice(0, MAX_PLACE_NOTES),
     phone: input.phone.trim().slice(0, 25),
     active: true,
+    // Nace sin confirmar aunque lo publique un coordinador: publicar desde una
+    // lista no es lo mismo que haber ido. Lo confirma quien se para en la puerta.
+    confirmed: false,
+    confirmedByName: null,
     zone: input.zone,
     createdByName: input.createdByName.slice(0, 60),
     createdAt: serverTimestamp(),
@@ -263,6 +286,21 @@ export async function updatePlace(placeId: string, input: PlaceInput) {
     notes: input.notes.trim().slice(0, MAX_PLACE_NOTES),
     phone: input.phone.trim().slice(0, 25),
     zone: input.zone,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Marcar que alguien confirmó el punto en terreno.
+ *
+ * Quien de verdad verifica es quien llega: la gente que necesita el albergue va
+ * de todos modos. El coordinador no tiene que recorrer cuarenta sitios, solo
+ * recoger lo que le cuentan los que ya fueron.
+ */
+export async function confirmPlace(placeId: string, nombre: string) {
+  await updateDoc(doc(db(), "places", placeId), {
+    confirmed: true,
+    confirmedByName: nombre.slice(0, 60),
     updatedAt: serverTimestamp(),
   });
 }

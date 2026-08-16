@@ -334,6 +334,11 @@ export const api = onRequest(
                 notas: v.notes,
                 telefono: v.phone,
                 zona: v.zone,
+                // Se expone el estado de confianza, no solo el dato. Un punto
+                // sin confirmar sigue siendo util, pero quien lo republique
+                // tiene que poder decirlo igual que lo decimos nosotros.
+                confirmadoEnTerreno: v.confirmed === true,
+                confirmadoPor: v.confirmedByName ?? null,
                 publicadoPor: v.createdByName,
                 actualizado: v.updatedAt?.toDate?.()?.toISOString() ?? null,
               },

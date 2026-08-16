@@ -39,6 +39,8 @@ sin conversión.
         "notas": "Reciben familias con niños",
         "telefono": "3001234567",
         "zona": "valle",
+        "confirmadoEnTerreno": true,
+        "confirmadoPor": "Defensa Civil Comuna 3",
         "publicadoPor": "Defensa Civil Comuna 3",
         "actualizado": "2026-08-16T14:02:11.000Z"
       }
@@ -55,6 +57,12 @@ omitirlos escondería albergues que existen. Trátalo, no lo asumas.
 
 Los publica un coordinador acreditado, nunca un anónimo: a un albergue se llega
 caminando y con la familia, y un dato falso ahí se paga caro.
+
+**Mirá `confirmadoEnTerreno` antes de republicar.** Cuando es `false`, el dato
+viene de una lista o de un aviso, pero nadie se paró todavía en la puerta. Sigue
+siendo útil —una familia que no se entera de un albergue real también duerme
+afuera— pero mostralo con la misma advertencia con que lo mostramos nosotros. Un
+`false` presentado como certeza manda gente a caminar por nada.
 
 ---
 

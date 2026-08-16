@@ -373,6 +373,8 @@ const PUNTO = {
   notes: "Reciben familias con niños",
   phone: "3001234567",
   active: true,
+  confirmed: false,
+  confirmedByName: null,
   zone: "valle",
   createdByName: "Defensa Civil",
 };
@@ -531,5 +533,55 @@ test("un anonimo no corrige un punto: seguiria siendo un dato en el que se confi
         createdAt: serverTimestamp(),
       }),
     ),
+  );
+});
+
+test("confirmar un punto en terreno es cosa de coordinadores, no de cualquiera", async () => {
+  const v = await validatorActor("punto-confirma");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  // Nace sin confirmar aunque lo publique un coordinador: publicar desde una
+  // lista no es lo mismo que haberse parado en la puerta.
+  assert.equal((await adminGet(`places/${ref.id}`)).fields.confirmed.booleanValue, false);
+
+  const a = await anonActor("punto-confirma-falso");
+  assert.ok(
+    await denied(() =>
+      updateDoc(doc(a.db, ref.path), {
+        ...PUNTO, confirmed: true, confirmedByName: "Yo mismo",
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      }),
+    ),
+    "un anonimo marcando como confirmado un dato en el que la gente va a confiar",
+  );
+
+  assert.equal(
+    await denied(() =>
+      updateDoc(doc(v.db, ref.path), {
+        ...PUNTO, confirmed: true, confirmedByName: "Defensa Civil",
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      }),
+    ),
+    false,
+  );
+  assert.equal((await adminGet(`places/${ref.id}`)).fields.confirmed.booleanValue, true);
+});
+
+test("quien llego puede avisar que el sitio SI funciona, no solo que fallo", async () => {
+  const v = await validatorActor("punto-senal-buena");
+  const ref = doc(collection(v.db, "places"));
+  await setDoc(ref, punto());
+
+  // Sin la senal positiva, el coordinador solo se entera de lo que sale mal y
+  // nunca puede confirmar nada sin ir en persona.
+  const a = await anonActor("vecino-que-fue");
+  assert.equal(
+    await denied(() =>
+      setDoc(doc(a.db, `${ref.path}/reports/${a.uid}`), {
+        placeId: ref.id, uid: a.uid, reason: "funciona", at: serverTimestamp(),
+      }),
+    ),
+    false,
   );
 });
