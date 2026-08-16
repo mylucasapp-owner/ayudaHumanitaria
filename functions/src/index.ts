@@ -14,7 +14,7 @@ import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 
 initializeApp();
@@ -258,5 +258,132 @@ export const reabrirEntregasSinConfirmar = onSchedule(
     }
 
     logger.info("entregas reabiertas", { total: estancadas.size });
+  },
+);
+
+
+/**
+ * API publica de lectura, para que otras plataformas usen estos datos.
+ *
+ * Nace de querer coordinarse con otros desarrollos en vez de competir por los
+ * mismos damnificados. En una emergencia, tres mapas distintos con datos
+ * parciales son peores que uno con todos: la gente no sabe cual mirar.
+ *
+ * QUE SE ABRE Y QUE NO, y es la decision de diseno de todo esto:
+ *
+ * - Los PUNTOS (albergues, acopios, salud, agua, comida) se abren enteros. Son
+ *   instituciones, no personas. Su telefono ya es publico dentro de la app
+ *   porque llamar antes de caminar dos horas con ninos es exactamente lo que
+ *   queremos. Compartirlos no cuesta nada y hace que un albergue aparezca en
+ *   todos los mapas a la vez.
+ *
+ * - Las NECESIDADES solo salen agregadas: cuantas hay por zona, tipo y estado.
+ *   Sin descripcion, sin referencia, sin ubicacion exacta. Una referencia como
+ *   "Carrera 16 #3-51" junto a "insulina para mi tia que depende de esto"
+ *   identifica a una persona vulnerable, y una API abierta convierte cosechar
+ *   todas esas direcciones en una sola peticion. Esta app ya gasta un cupo por
+ *   cada telefono que revela, precisamente para que nadie los coseche; abrir
+ *   las direcciones de par en par contradiria esa misma decision.
+ *
+ * Para el detalle individual hara falta una llave por organizacion. Mientras no
+ * exista, quien necesite ese nivel puede pedirlo por el correo de contacto.
+ *
+ * El cache de 5 minutos no es cosmetico: lo sirve el CDN de Hosting, asi que mil
+ * consumidores no son mil lecturas de Firestore. Es lo que hace que abrir esto
+ * no pueda dispararle la factura a un proyecto sin animo de lucro.
+ */
+export const api = onRequest(
+  { region: REGION, cors: true, memory: "256MiB" },
+  async (req, res) => {
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.set("Access-Control-Allow-Origin", "*");
+
+    const ruta = req.path.replace(/^\/api/, "").replace(/\/$/, "");
+
+    try {
+      if (ruta === "/puntos.geojson" || ruta === "/puntos") {
+        const snap = await db
+          .collection("places")
+          .where("active", "==", true)
+          .limit(1000)
+          .get();
+
+        // GeoJSON porque lo entiende cualquier herramienta de mapas sin
+        // conversion. Los puntos sin coordenadas van con geometria nula, que es
+        // valido: se pierden en un mapa pero no en una lista, y omitirlos seria
+        // esconder albergues que existen.
+        res.json({
+          type: "FeatureCollection",
+          generado: new Date().toISOString(),
+          fuente: "Ayuda Humanitaria",
+          licencia: "Uso libre citando la fuente",
+          features: snap.docs.map((d) => {
+            const v = d.data();
+            const loc = v.location as { lat: number; lng: number } | null;
+            return {
+              type: "Feature",
+              id: d.id,
+              geometry: loc
+                ? { type: "Point", coordinates: [loc.lng, loc.lat] }
+                : null,
+              properties: {
+                tipo: v.kind,
+                nombre: v.name,
+                direccion: v.reference,
+                horario: v.schedule,
+                notas: v.notes,
+                telefono: v.phone,
+                zona: v.zone,
+                publicadoPor: v.createdByName,
+                actualizado: v.updatedAt?.toDate?.()?.toISOString() ?? null,
+              },
+            };
+          }),
+        });
+        return;
+      }
+
+      if (ruta === "/resumen.json" || ruta === "/resumen") {
+        const snap = await db
+          .collection("needs")
+          .where("active", "==", true)
+          .limit(2000)
+          .get();
+
+        const porZona: Record<string, number> = {};
+        const porCategoria: Record<string, number> = {};
+        const porEstado: Record<string, number> = {};
+        for (const d of snap.docs) {
+          const v = d.data();
+          const z = String(v.zone ?? "otra");
+          const c = String(v.category ?? "otro");
+          const e = String(v.status ?? "abierta");
+          porZona[z] = (porZona[z] ?? 0) + 1;
+          porCategoria[c] = (porCategoria[c] ?? 0) + 1;
+          porEstado[e] = (porEstado[e] ?? 0) + 1;
+        }
+
+        res.json({
+          generado: new Date().toISOString(),
+          fuente: "Ayuda Humanitaria",
+          abiertas: snap.size,
+          porZona,
+          porCategoria,
+          porEstado,
+          nota:
+            "Solo agregados. El detalle de cada necesidad lleva la referencia " +
+            "escrita de una persona damnificada y no se abre sin acuerdo previo.",
+        });
+        return;
+      }
+
+      res.status(404).json({
+        error: "Ruta desconocida",
+        disponibles: ["/api/puntos.geojson", "/api/resumen.json"],
+      });
+    } catch (e) {
+      logger.error("fallo en la api publica", e);
+      res.status(500).json({ error: "No se pudo servir la consulta" });
+    }
   },
 );

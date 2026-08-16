@@ -1,9 +1,18 @@
 {
   "emulators": {
-    "auth": { "port": 9099 },
-    "firestore": { "port": 8181 },
-    "functions": { "port": 5001 },
-    "ui": { "enabled": true, "port": 4000 },
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8181
+    },
+    "functions": {
+      "port": 5001
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
     "singleProjectMode": true
   },
   "firestore": {
@@ -14,13 +23,23 @@
     {
       "source": "functions",
       "codebase": "default",
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
-      "ignore": ["node_modules", ".git", "*.local"]
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.local"
+      ]
     }
   ],
   "hosting": {
     "public": "out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
     "cleanUrls": true,
     "headers": [
       {
@@ -34,26 +53,61 @@
       },
       {
         "source": "/sw.js",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       },
       {
         "source": "**/*.@(html|webmanifest)",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       },
       {
         "source": "/opengraph-image",
         "headers": [
-          { "key": "Content-Type", "value": "image/png" },
-          { "key": "Cache-Control", "value": "public, max-age=86400" }
+          {
+            "key": "Content-Type",
+            "value": "image/png"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400"
+          }
         ]
       },
       {
         "source": "/",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       },
       {
         "source": "**/",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "region": "us-east1"
+        }
       }
     ]
   }
