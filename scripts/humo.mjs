@@ -130,6 +130,50 @@ if (id) {
   );
 }
 
+// Las teselas se autentican por dominio. Al estrenar uno nuevo es el fallo mas
+// facil de pasar por alto: la app funciona, nada peta, y el mapa queda gris.
+//
+// Se pide con <img crossOrigin> y no con fetch, porque asi es como las pide
+// Leaflet: con fetch el navegador manda otra cabecera Referer y el proveedor
+// responde 401 hasta en el dominio que si funciona. La prueba tiene que hacer
+// exactamente lo que hace la app, o mide otra cosa.
+//
+// Responde a "¿vera mapa quien entre por aqui?", que es lo unico que importa.
+// No sirve como prueba de la configuracion de Stadia: su politica no es una
+// lista blanca estricta —dominios ajenos reciben 200— asi que un verde aqui no
+// dice que el dominio este bien dado de alta, solo que hoy sirve teselas.
+{
+  const pagina = await contexto.newPage();
+  try {
+    await pagina.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+    const ok = await pagina.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img.naturalWidth > 0);
+          img.onerror = () => resolve(false);
+          img.src =
+            "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/12/1150/2050.png?humo=" +
+            Date.now();
+          setTimeout(() => resolve(false), 15000);
+        }),
+    );
+    if (ok) console.log("  ok  teselas del mapa");
+    else
+      fallos.push(
+        `teselas del mapa: no cargan desde ${BASE} — el mapa se vera gris. ` +
+          "Falta autorizar este dominio en Stadia Maps.",
+      );
+  } catch (e) {
+    fallos.push(
+      `teselas del mapa: no se pudieron probar — ${String(e.message).slice(0, 80)}`,
+    );
+  } finally {
+    await pagina.close();
+  }
+}
+
 await navegador.close();
 
 if (fallos.length > 0) {
