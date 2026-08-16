@@ -10,6 +10,17 @@ const PATHS: Record<Category, React.ReactNode> = {
       <path d="M12 4v16M4 12h16" />
     </>
   ),
+  // Frasco con pastilla: medicina, no atención. La diferencia importa porque un
+  // medicamento crónico lo cubre una farmacia o un vecino con receta, mientras
+  // que un especialista es una búsqueda completamente distinta.
+  medicamentos: (
+    <>
+      <path d="M8 3h8" />
+      <path d="M9 3v3l-2 3v11h10V9l-2-3V3" />
+      <path d="M9 13h6" />
+      <path d="M12 10v6" />
+    </>
+  ),
   rescate: (
     <>
       <path d="M12 3 2 20h20L12 3Z" />

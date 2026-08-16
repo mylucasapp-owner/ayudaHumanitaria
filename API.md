@@ -93,7 +93,7 @@ beneficiado sería quien busca a quién estafar.
 
 **Si tu organización necesita ese nivel de detalle**, escríbenos a
 `errantelegal@gmail.com`: se resuelve con un acuerdo y una llave, no cerrando la
-puerta. Cuéntanos quiénes sois y para qué, y lo montamos.
+puerta. Contanos quiénes son y para qué, y lo armamos.
 
 ---
 
@@ -110,6 +110,10 @@ puerta. Cuéntanos quiénes sois y para qué, y lo montamos.
 
 ## Lo que nos sirve de vuelta
 
-Si publicáis albergues o acopios que aquí no están, decídnoslo. Lo ideal es que
-no haya que elegir entre plataformas: que quien busque dónde dormir esta noche
-lo encuentre, entre por donde entre.
+Si publicás albergues o acopios que acá no están, avisanos. Lo ideal es que
+nadie tenga que elegir entre plataformas: que quien busque dónde dormir esta
+noche lo encuentre, entre por donde entre.
+
+Y si tenés una API abierta, pasánosla. Consumimos con gusto lo que ya esté
+publicado en otro lado antes que pedirle a un coordinador que lo teclee de
+nuevo: cada dato que se captura dos veces es tiempo robado a la emergencia.

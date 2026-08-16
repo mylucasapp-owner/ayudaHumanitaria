@@ -247,7 +247,7 @@ descargan, así que no cuentan para casi nadie.
    y el mapa es como busca la mayoría. Entra a cada ficha desde el panel y marca
    el punto mientras hablas por teléfono con quien lo pidió.
 
-4. **Más validadores.** Hoy sois dos, y uno cubre solo Cali. Si alguien reporta
+4. **Más validadores.** Hoy son dos, y uno cubre solo Cali. Si alguien reporta
    en otro departamento, nadie con conocimiento local puede verificarlo.
 
 5. **Un segundo dueño del proyecto en Firebase.** Acreditar validadores exige

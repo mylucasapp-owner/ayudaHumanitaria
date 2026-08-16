@@ -1,5 +1,6 @@
 export const CATEGORIES = [
   "medico",
+  "medicamentos",
   "rescate",
   "agua",
   "refugio",
@@ -11,7 +12,8 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
-  medico: "MÉDICO",
+  medico: "ATENCIÓN MÉDICA",
+  medicamentos: "MEDICAMENTOS",
   rescate: "RESCATE",
   agua: "AGUA / ALIMENTO",
   refugio: "REFUGIO",
@@ -23,6 +25,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 /** Glifo de una sola letra para los pines del mapa, legible a 30px. */
 export const CATEGORY_GLYPH: Record<Category, string> = {
   medico: "+",
+  medicamentos: "M",
   rescate: "!",
   agua: "A",
   refugio: "R",
@@ -40,7 +43,8 @@ export const CATEGORY_GLYPH: Record<Category, string> = {
  * casilla que suena más parecida y sigue.
  */
 export const CATEGORY_SUMMARY: Record<Category, string> = {
-  medico: "Medicinas, curaciones, personal de salud",
+  medico: "Curaciones, personal de salud, atención",
+  medicamentos: "Medicinas, recetas, insumos, oxígeno",
   rescate: "Personas atrapadas, en peligro ahora",
   agua: "Agua potable, comida, elementos de aseo",
   refugio: "Dónde dormir, carpas, cobijas, ropa",
@@ -51,7 +55,8 @@ export const CATEGORY_SUMMARY: Record<Category, string> = {
 
 /** Ejemplo mostrado como placeholder para que el reporte sea concreto. */
 export const CATEGORY_HINT: Record<Category, string> = {
-  medico: "Ej: insulina para 2 adultos mayores",
+  medico: "Ej: enfermera para curaciones, médico que pueda venir",
+  medicamentos: "Ej: insulina glargina 300u, la de mi tía se perdió",
   rescate: "Ej: 3 personas atrapadas, edificio 2 pisos",
   agua: "Ej: agua potable para 12 personas, 2 bebés",
   refugio: "Ej: carpa y frazadas para familia de 5",
