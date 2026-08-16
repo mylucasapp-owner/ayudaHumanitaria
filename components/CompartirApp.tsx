@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SITE } from "@/lib/site";
+import { origenActual } from "@/lib/site";
 
 /**
  * Difundir la app entera, no una necesidad suelta.
@@ -17,17 +17,19 @@ import { SITE } from "@/lib/site";
  * Por eso dice qué es, para quién, y que no cuesta ni pide registro —lo que más
  * frena a alguien desconfiado ante un enlace que le llegó de un desconocido.
  */
-const MENSAJE =
-  `AYUDA HUMANITARIA — necesidades reales de los damnificados, en un mapa.\n\n` +
-  `Si necesitas ayuda, repórtala ahí y alguien cerca la ve.\n` +
-  `Si puedes ayudar, mira qué hace falta cerca de ti.\n` +
-  `También muestra albergues y puntos de acopio.\n\n` +
-  `Gratis, sin registro y funciona sin señal.\n` +
-  `${SITE.url}\n\n` +
-  `Reenvíalo a quien esté en zona afectada.`;
-
 export default function CompartirApp() {
   const [copiado, setCopiado] = useState(false);
+
+  // Se arma al pintar, no al cargar el módulo: en la construcción no hay
+  // navegador y quedaría clavado el dominio viejo dentro del mensaje.
+  const MENSAJE =
+    `AYUDA HUMANITARIA — necesidades reales de los damnificados, en un mapa.\n\n` +
+    `Si necesitas ayuda, repórtala ahí y alguien cerca la ve.\n` +
+    `Si puedes ayudar, mira qué hace falta cerca de ti.\n` +
+    `También muestra albergues y puntos de acopio.\n\n` +
+    `Gratis, sin registro y funciona sin señal.\n` +
+    `${origenActual()}\n\n` +
+    `Reenvíalo a quien esté en zona afectada.`;
 
   return (
     <section className="stack" style={{ gap: 10 }}>

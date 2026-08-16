@@ -12,7 +12,7 @@ import {
   subscribeToMyClaims,
   subscribeToMyNeeds,
 } from "@/lib/needs";
-import { SITE } from "@/lib/site";
+import { origenActual, SITE } from "@/lib/site";
 import { requestPersistentStorage, type PersistenceState } from "@/lib/storage";
 import type { Need } from "@/lib/types";
 
@@ -160,7 +160,7 @@ function CodigoDeReporte({ needId }: { needId: string }) {
 
   if (!code) return null;
   const shown = formatRecoveryCode(code);
-  const mensaje = `Mi código de recuperación en Ayuda Humanitaria es ${shown} — ${SITE.url}/recuperar/`;
+  const mensaje = `Mi código de recuperación en Ayuda Humanitaria es ${shown} — ${origenActual()}/recuperar/`;
 
   return (
     <div className="row" style={{ gap: 10, alignItems: "center" }}>

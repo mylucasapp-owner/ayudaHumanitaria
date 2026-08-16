@@ -16,7 +16,7 @@ const PointPicker = dynamic(() => import("@/components/map/PointPicker"), {
 });
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import type { ContactResult } from "@/lib/needs";
-import { SITE } from "@/lib/site";
+import { origenActual, SITE } from "@/lib/site";
 import { zoneLabel } from "@/lib/zones";
 import {
   BlockedError,
@@ -564,7 +564,7 @@ function NeedDetail() {
               href={`https://wa.me/?text=${encodeURIComponent(
                 `${CATEGORY_LABEL[need.category]} en ${zoneLabel(need.location) ?? "zona afectada"}: ` +
                   `${need.description}\n${need.reference || ""}\n` +
-                  `¿Puedes cubrirla o conoces a alguien? ${SITE.url}/necesidad/?id=${need.id}`,
+                  `¿Puedes cubrirla o conoces a alguien? ${origenActual()}/necesidad/?id=${need.id}`,
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -575,7 +575,7 @@ function NeedDetail() {
               type="button"
               className="btn btn--ghost"
               onClick={async () => {
-                const url = `${SITE.url}/necesidad/?id=${need.id}`;
+                const url = `${origenActual()}/necesidad/?id=${need.id}`;
                 try {
                   if (navigator.share) {
                     await navigator.share({ title: need.description, url });

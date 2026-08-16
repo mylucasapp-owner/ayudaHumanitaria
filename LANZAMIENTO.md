@@ -293,3 +293,47 @@ Y antes de subir cualquier cambio, sin excepción:
 ```bash
 npm run check     # tipos + reglas de React + 86 pruebas
 ```
+
+
+## Estrenar el dominio propio
+
+`ayudahumanitaria.info`, comprado en Squarespace. **Tres cosas rompen la app al
+cambiar de dominio y ninguna avisa.** Dos ya están desactivadas; la tercera hay
+que hacerla a mano ANTES de difundir el dominio nuevo.
+
+### Ya hecho (por API)
+
+- **Dominios autorizados de Firebase Auth.** Sin esto la sesión anónima falla y
+  nadie puede leer ni escribir nada: la app queda muerta, no degradada.
+- **Dominios de la clave reCAPTCHA (App Check).** Sin esto App Check no valida y
+  Firestore rechaza todo. Mismo resultado: muerta.
+
+Ambos se añadieron sin tocar los existentes, así que el `.web.app` sigue
+funcionando igual.
+
+### Pendiente, en este orden
+
+1. **Stadia Maps.** Añade `ayudahumanitaria.info` y `www.ayudahumanitaria.info`
+   a los dominios permitidos de tu cuenta. Si se olvida, el mapa queda gris —la
+   app funciona, pero pierde la mitad de su utilidad— y no llega ningún aviso.
+2. **Firebase Console → Hosting → Añadir dominio personalizado.** No se puede
+   por CLI. Firebase da unos registros DNS.
+3. **Squarespace → DNS.** Pega esos registros. Añade también `www` apuntando al
+   mismo sitio: mucha gente lo escribe.
+4. **Esperar el certificado**, hasta 24 horas. Hasta que no esté, el dominio da
+   error de seguridad, que en una cadena de WhatsApp es peor que no tenerlo.
+5. **Comprobar antes de difundir:**
+   ```bash
+   BASE=https://ayudahumanitaria.info npm run humo
+   ```
+   Y entrar a mano al mapa: si sale gris, falta el paso 1.
+
+### Lo que NO hay que cambiar
+
+`SITE.url` se queda como está. Los enlaces que se comparten se arman con el
+dominio desde el que la persona está mirando, así que quien entre por el nuevo
+compartirá el nuevo y quien entre por el viejo compartirá el viejo. No hay día
+de corte ni ventana en la que se reparta un dominio que aún no responde.
+
+El `.web.app` seguirá vivo para siempre: las cadenas de WhatsApp que ya
+circulan no se rompen.
