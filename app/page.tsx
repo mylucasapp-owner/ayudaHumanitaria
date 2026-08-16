@@ -1,5 +1,6 @@
 import Link from "next/link";
 import OfflineNotice from "@/components/OfflineNotice";
+import CompartirApp from "@/components/CompartirApp";
 import { SITE } from "@/lib/site";
 
 export default function Home() {
@@ -41,6 +42,8 @@ export default function Home() {
         </a>
         . Esta plataforma no reemplaza a los servicios de emergencia.
       </p>
+
+      <CompartirApp />
 
       <div className="spacer" />
 

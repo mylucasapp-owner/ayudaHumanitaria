@@ -16,7 +16,7 @@
 */
 
 // Subir esta versión invalida todas las cachés en el próximo despliegue.
-const VERSION = "v8";
+const VERSION = "v9";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
