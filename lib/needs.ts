@@ -611,6 +611,33 @@ export async function markDelivered(needId: string) {
   });
 }
 
+/**
+ * El autor corrige su propio reporte.
+ *
+ * Una necesidad no es una foto: consiguió la mitad de la insulina, se mudó al
+ * albergue, la familia cambió de tamaño. Sin esto la única salida era cerrarla y
+ * publicarla de nuevo, lo que le cambia el identificador, rompe el enlace que ya
+ * compartió y le hace perder su puesto.
+ *
+ * Al corregir se cae la verificación: un validador confirmó un texto concreto y,
+ * si ese texto cambia, lo que confirmó ya no es lo que se lee. Las reglas lo
+ * exigen, así que se escribe aquí también.
+ */
+export async function editNeed(
+  needId: string,
+  campos: { description: string; reference: string; peopleCount: number },
+) {
+  await updateDoc(doc(db(), "needs", needId), {
+    description: campos.description.trim().slice(0, MAX_DESCRIPTION),
+    reference: campos.reference.trim().slice(0, MAX_REFERENCE),
+    peopleCount: campos.peopleCount,
+    verified: false,
+    verifiedByName: null,
+    verifiedByUid: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 /** Cierre real. Solo el solicitante o un validador. */
 export async function resolveNeed(needId: string) {
   await updateDoc(doc(db(), "needs", needId), {

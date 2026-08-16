@@ -38,6 +38,7 @@ import {
   BlockedError,
   locateNeed,
   registerInterest,
+  editNeed,
 } from "../lib/needs.ts";
 
 after(cleanup);
@@ -482,5 +483,68 @@ test("el acceso a una busqueda se paga: sin cupo no hay telefono", async () => {
       }),
     ),
     "sin cupo pagado no se alcanza el telefono de una familia",
+  );
+});
+
+test("el autor corrige su reporte y la verificacion se cae con el texto", async () => {
+  const rosa = await anonActor("rosa-corrige");
+  const needId = await publish(rosa, { description: "Insulina para mi tia" });
+
+  // Un validador la confirma tal como esta escrita.
+  const v = await validatorActor("val-corrige");
+  await as(v, () => verifyNeed(needId, "Bomberos", v.uid));
+  assert.equal((await adminGet(`needs/${needId}`)).fields.verified.booleanValue, true);
+
+  // Rosa consigue la mitad y lo corrige.
+  await as(rosa, () =>
+    editNeed(needId, {
+      description: "Insulina para mi tia, ya conseguimos la mitad",
+      reference: "Albergue Coliseo",
+      peopleCount: 2,
+    }),
+  );
+
+  const d = await adminGet(`needs/${needId}`);
+  assert.equal(d.fields.description.stringValue, "Insulina para mi tia, ya conseguimos la mitad");
+  assert.equal(d.fields.peopleCount.integerValue, "2");
+  // La verificacion ya no aplica a un texto que cambio: si se conservara,
+  // bastaria con pedir algo pequeno, lograr el sello y reescribirlo.
+  assert.equal(d.fields.verified.booleanValue, false);
+  assert.equal(d.fields.verifiedByUid.nullValue, null);
+});
+
+test("nadie corrige el reporte de otro, ni el suyo ya cerrado", async () => {
+  const rosa = await anonActor("rosa-corrige-2");
+  const needId = await publish(rosa, { description: "Agua para 4" });
+
+  const intruso = await anonActor("intruso-corrige");
+  assert.ok(
+    await denied(() =>
+      as(intruso, () =>
+        editNeed(needId, { description: "Otra cosa", reference: "x", peopleCount: 1 }),
+      ),
+    ),
+    "reescribir lo que otro pidio",
+  );
+
+  // Un validador tampoco: puede descartar o cerrar, no reescribir.
+  const v = await validatorActor("val-corrige-2");
+  assert.ok(
+    await denied(() =>
+      as(v, () =>
+        editNeed(needId, { description: "Corregido por mi", reference: "x", peopleCount: 1 }),
+      ),
+    ),
+    "un validador reescribiendo el pedido de alguien",
+  );
+
+  await as(rosa, () => resolveNeed(needId));
+  assert.ok(
+    await denied(() =>
+      as(rosa, () =>
+        editNeed(needId, { description: "Reabriendo por la puerta de atras", reference: "x", peopleCount: 1 }),
+      ),
+    ),
+    "corregir una ya cerrada",
   );
 });

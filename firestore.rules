@@ -290,6 +290,52 @@ service cloud.firestore {
                verificationUnchanged();
       }
 
+      // El autor corrige su propio reporte.
+      //
+      // Una necesidad no es una foto: consiguio la mitad de la insulina, se
+      // mudo al albergue, la familia cambio de tamano. Sin esto la unica salida
+      // era cerrarla y publicarla de nuevo, que le cambia el identificador,
+      // rompe el enlace que ya compartio y le hace perder su puesto.
+      //
+      // Solo el autor, y solo mientras siga activa: corregir una cerrada no
+      // sirve para nada.
+      //
+      // AL EDITAR SE CAE LA VERIFICACION, y no es un castigo al honesto. Un
+      // validador confirmo un texto concreto; si ese texto cambia, lo que
+      // confirmo ya no es lo que se lee. Sin esta regla bastaria con pedir algo
+      // pequeno, lograr el sello de VERIFICADA y reescribirlo por otra cosa
+      // conservando la credibilidad. El validador vuelve a confirmar en su
+      // siguiente pasada, que es barato; lo otro no tiene arreglo.
+      function editAction() {
+        return isOwner() &&
+               current().active == true &&
+               incoming().keys().hasOnly([
+                 'category', 'description', 'reference', 'location', 'peopleCount',
+                 'status', 'active', 'ownerUid', 'verified', 'verifiedByName',
+                 'verifiedByUid', 'zone', 'claim', 'createdAt', 'updatedAt'
+               ]) &&
+               incoming().category   == current().category &&
+               incoming().location   == current().location &&
+               incoming().zone       == current().zone &&
+               incoming().status     == current().status &&
+               incoming().active     == current().active &&
+               incoming().ownerUid   == current().ownerUid &&
+               incoming().createdAt  == current().createdAt &&
+               incoming().updatedAt  == request.time &&
+               claimUnchanged() &&
+               incoming().verified == false &&
+               incoming().verifiedByName == null &&
+               incoming().verifiedByUid == null &&
+               incoming().description is string &&
+               incoming().description.size() > 0 &&
+               incoming().description.size() <= 140 &&
+               incoming().reference is string &&
+               incoming().reference.size() <= 120 &&
+               incoming().peopleCount is int &&
+               incoming().peopleCount >= 1 &&
+               incoming().peopleCount <= 999;
+      }
+
       // Reporte que no pudo confirmarse.
       function discardAction() {
         return isValidator() &&
@@ -332,6 +378,10 @@ service cloud.firestore {
         incoming().claim == null &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
+
+      // La correccion del autor va fuera de coreUnchanged(), que existe justo
+      // para congelar lo que ella cambia. Se valida entera por su cuenta.
+      allow update: if canWrite() && editAction();
 
       allow update: if canWrite() && coreUnchanged() && (
         (

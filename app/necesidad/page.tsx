@@ -25,6 +25,7 @@ import {
   OfflineError,
   blockUser,
   claimNeed,
+  editNeed,
   hasInterest,
   locateNeed,
   registerInterest,
@@ -81,6 +82,12 @@ function NeedDetail() {
    * asi que no se puede deducir del `claim`: hay que preguntarlo.
    */
   const [tengoAcceso, setTengoAcceso] = useState(false);
+  /** Corrección del propio reporte: null cuando no se está corrigiendo. */
+  const [correccion, setCorreccion] = useState<{
+    description: string;
+    reference: string;
+    peopleCount: number;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -433,6 +440,105 @@ function NeedDetail() {
                   : "Ya recibí esta ayuda"}
             </button>
           </>
+        )}
+
+        {/* Una necesidad no es una foto: consiguió la mitad, se mudó al
+            albergue, la familia cambió de tamaño. Antes la única salida era
+            cerrarla y publicarla de nuevo, perdiendo el enlace ya compartido. */}
+        {isOwner && !closed && correccion === null && (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() =>
+              setCorreccion({
+                description: need.description,
+                reference: need.reference,
+                peopleCount: need.peopleCount,
+              })
+            }
+          >
+            Corregir mi reporte
+          </button>
+        )}
+
+        {isOwner && !closed && correccion !== null && (
+          <div className="stack">
+            <hr className="hr" />
+            <div className="field">
+              <label className="label" htmlFor="corr-desc">
+                Qué necesitas
+              </label>
+              <textarea
+                id="corr-desc"
+                className="textarea"
+                maxLength={140}
+                value={correccion.description}
+                onChange={(e) =>
+                  setCorreccion({ ...correccion, description: e.target.value })
+                }
+              />
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="corr-ref">
+                Dónde estás
+              </label>
+              <input
+                id="corr-ref"
+                className="input"
+                maxLength={120}
+                value={correccion.reference}
+                onChange={(e) =>
+                  setCorreccion({ ...correccion, reference: e.target.value })
+                }
+              />
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="corr-personas">
+                Cuántas personas
+              </label>
+              <input
+                id="corr-personas"
+                className="input"
+                inputMode="numeric"
+                value={String(correccion.peopleCount)}
+                onChange={(e) =>
+                  setCorreccion({
+                    ...correccion,
+                    peopleCount: Math.max(
+                      1,
+                      Math.min(999, Number(e.target.value.replace(/\D/g, "")) || 1),
+                    ),
+                  })
+                }
+              />
+            </div>
+            {need.verified && (
+              <p className="meta">
+                Al corregirlo deja de aparecer como verificada, porque el
+                coordinador confirmó lo que decía antes. Volverán a confirmarla.
+              </p>
+            )}
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={busy || correccion.description.trim().length < 3}
+              onClick={() =>
+                run(async () => {
+                  await editNeed(need.id, correccion);
+                  setCorreccion(null);
+                })
+              }
+            >
+              {busy ? "Guardando…" : "Guardar corrección"}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => setCorreccion(null)}
+            >
+              Cancelar
+            </button>
+          </div>
         )}
 
         {delivered && !isOwner && !isClaimer && !isValidator && (
