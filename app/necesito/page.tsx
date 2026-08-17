@@ -15,7 +15,8 @@ import {
   MAX_DESCRIPTION,
   MAX_REFERENCE,
 } from "@/lib/needs";
-import { origenActual, SITE } from "@/lib/site";
+import { SITE } from "@/lib/site";
+import { useOrigen } from "@/lib/useOrigen";
 import { zoneLabel } from "@/lib/zones";
 import {
   CATEGORIES,
@@ -501,12 +502,13 @@ function Ticket({
   code: string;
 }) {
   const shown = useMemo(() => formatRecoveryCode(code), [code]);
+  const origen = useOrigen();
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const mensaje = `Reporté una necesidad en Ayuda Humanitaria.\nMi código de recuperación es ${shown}\nSirve para recuperar el reporte si pierdo el teléfono: ${origenActual()}/recuperar/`;
+  const mensaje = `Reporté una necesidad en Ayuda Humanitaria.\nMi código de recuperación es ${shown}\nSirve para recuperar el reporte si pierdo el teléfono: ${origen}/recuperar/`;
 
-  const enlace = `${origenActual()}/necesidad/?id=${id}`;
+  const enlace = `${origen}/necesidad/?id=${id}`;
   // Mismo formato que el de la ficha: quien lo recibe debe entender de qué se
   // trata sin abrir nada, porque muchos leen WhatsApp con datos contados.
   const mensajeNecesidad =

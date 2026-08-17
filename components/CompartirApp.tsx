@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { origenActual } from "@/lib/site";
+import { useOrigen } from "@/lib/useOrigen";
 
 /**
  * Difundir la app entera, no una necesidad suelta.
@@ -19,6 +19,7 @@ import { origenActual } from "@/lib/site";
  */
 export default function CompartirApp() {
   const [copiado, setCopiado] = useState(false);
+  const origen = useOrigen();
 
   // Se arma al pintar, no al cargar el módulo: en la construcción no hay
   // navegador y quedaría clavado el dominio viejo dentro del mensaje.
@@ -28,7 +29,7 @@ export default function CompartirApp() {
     `Si puedes ayudar, mira qué hace falta cerca de ti.\n` +
     `También muestra albergues y puntos de acopio.\n\n` +
     `Gratis, sin registro y funciona sin señal.\n` +
-    `${origenActual()}\n\n` +
+    `${origen}\n\n` +
     `Reenvíalo a quien esté en zona afectada.`;
 
   return (

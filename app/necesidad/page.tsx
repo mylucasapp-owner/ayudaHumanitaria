@@ -16,7 +16,8 @@ const PointPicker = dynamic(() => import("@/components/map/PointPicker"), {
 });
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import type { ContactResult } from "@/lib/needs";
-import { origenActual, SITE } from "@/lib/site";
+import { SITE } from "@/lib/site";
+import { useOrigen } from "@/lib/useOrigen";
 import { zoneLabel } from "@/lib/zones";
 import {
   BlockedError,
@@ -82,6 +83,7 @@ function NeedDetail() {
    * asi que no se puede deducir del `claim`: hay que preguntarlo.
    */
   const [tengoAcceso, setTengoAcceso] = useState(false);
+  const origen = useOrigen();
   /** Corrección del propio reporte: null cuando no se está corrigiendo. */
   const [correccion, setCorreccion] = useState<{
     description: string;
@@ -670,7 +672,7 @@ function NeedDetail() {
               href={`https://wa.me/?text=${encodeURIComponent(
                 `${CATEGORY_LABEL[need.category]} en ${zoneLabel(need.location) ?? "zona afectada"}: ` +
                   `${need.description}\n${need.reference || ""}\n` +
-                  `¿Puedes cubrirla o conoces a alguien? ${origenActual()}/necesidad/?id=${need.id}`,
+                  `¿Puedes cubrirla o conoces a alguien? ${origen}/necesidad/?id=${need.id}`,
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -681,7 +683,7 @@ function NeedDetail() {
               type="button"
               className="btn btn--ghost"
               onClick={async () => {
-                const url = `${origenActual()}/necesidad/?id=${need.id}`;
+                const url = `${origen}/necesidad/?id=${need.id}`;
                 try {
                   if (navigator.share) {
                     await navigator.share({ title: need.description, url });

@@ -12,7 +12,8 @@ import {
   subscribeToMyClaims,
   subscribeToMyNeeds,
 } from "@/lib/needs";
-import { origenActual, SITE } from "@/lib/site";
+import { SITE } from "@/lib/site";
+import { useOrigen } from "@/lib/useOrigen";
 import { requestPersistentStorage, type PersistenceState } from "@/lib/storage";
 import type { Need } from "@/lib/types";
 
@@ -153,6 +154,9 @@ function MisReportesPage() {
  */
 function CodigoDeReporte({ needId }: { needId: string }) {
   const [code, setCode] = useState<string | null>(null);
+  // Antes del `return` de abajo: un hook por debajo cambia el número de hooks
+  // entre renders y tumba la pantalla entera. Ya pasó una vez.
+  const origen = useOrigen();
 
   useEffect(() => {
     setCode(rememberedCode(needId));
@@ -160,7 +164,7 @@ function CodigoDeReporte({ needId }: { needId: string }) {
 
   if (!code) return null;
   const shown = formatRecoveryCode(code);
-  const mensaje = `Mi código de recuperación en Ayuda Humanitaria es ${shown} — ${origenActual()}/recuperar/`;
+  const mensaje = `Mi código de recuperación en Ayuda Humanitaria es ${shown} — ${origen}/recuperar/`;
 
   return (
     <div className="row" style={{ gap: 10, alignItems: "center" }}>
