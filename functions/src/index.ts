@@ -16,6 +16,7 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
+import { createHash } from "node:crypto";
 
 initializeApp();
 const db = getFirestore();
@@ -390,5 +391,127 @@ export const api = onRequest(
       logger.error("fallo en la api publica", e);
       res.status(500).json({ error: "No se pudo servir la consulta" });
     }
+  },
+);
+
+
+/**
+ * Aporte de puntos por parte de otra plataforma.
+ *
+ * La API de lectura ya permitia que otros usaran estos datos. Esto es lo que la
+ * convierte en un intercambio: que tambien puedan traer los suyos. Sin esta
+ * mitad, "centro de intercambio" es solo una forma elegante de decir "nuestra
+ * base de datos".
+ *
+ * QUIEN PUEDE: organizaciones con llave, dadas de alta a mano. No es
+ * burocracia: publicar un albergue manda familias caminando, y ese permiso no
+ * se le da a quien pase por ahi. Pero se da a una organizacion entera de una
+ * vez, no persona por persona.
+ *
+ * LO QUE APORTAN NACE SIN CONFIRMAR, igual que lo que publica un coordinador
+ * desde una lista. Nadie de aca se paro en esa puerta, y decirlo es lo unico
+ * honesto. Queda con el nombre de quien lo trajo, para que quien lo lea sepa de
+ * donde salio y a quien preguntarle.
+ *
+ * Se guarda el hash de la llave, no la llave. Si la coleccion se filtrara, no
+ * le entregaria a nadie permiso de escritura.
+ */
+export const aportarPunto = onRequest(
+  { region: REGION, cors: true, memory: "256MiB" },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ error: "Usa POST" });
+      return;
+    }
+
+    const cabecera = String(req.get("Authorization") ?? "");
+    const llave = cabecera.replace(/^Bearer\s+/i, "").trim();
+    if (!llave) {
+      res.status(401).json({
+        error: "Falta la llave",
+        como: "Authorization: Bearer <tu-llave>. Se piden en errantelegal@gmail.com",
+      });
+      return;
+    }
+
+    const hash = createHash("sha256").update(llave).digest("hex");
+    const socios = await db
+      .collection("partners")
+      .where("keyHash", "==", hash)
+      .limit(1)
+      .get();
+
+    if (socios.empty || socios.docs[0].get("active") !== true) {
+      logger.warn("intento de aporte con llave desconocida");
+      res.status(403).json({ error: "Llave desconocida o desactivada" });
+      return;
+    }
+    const socio = socios.docs[0];
+    const nombreSocio = String(socio.get("name") ?? "Organizacion aliada");
+
+    const cuerpo = (req.body ?? {}) as Record<string, unknown>;
+    const texto = (k: string, tope: number) =>
+      String(cuerpo[k] ?? "").trim().slice(0, tope);
+
+    const kind = String(cuerpo.tipo ?? cuerpo.kind ?? "");
+    const name = texto("nombre", 80) || texto("name", 80);
+    if (!["albergue", "acopio", "salud", "agua", "comida"].includes(kind)) {
+      res.status(400).json({
+        error: "tipo invalido",
+        validos: ["albergue", "acopio", "salud", "agua", "comida"],
+      });
+      return;
+    }
+    if (name.length < 3) {
+      res.status(400).json({ error: "nombre demasiado corto" });
+      return;
+    }
+
+    // Se aceptan coordenadas sueltas o en GeoJSON, porque obligar a un formato
+    // concreto es exactamente la friccion que hace que nadie se integre.
+    let location: { lat: number; lng: number } | null = null;
+    const c = cuerpo.coordenadas ?? cuerpo.coordinates ?? null;
+    if (Array.isArray(c) && c.length === 2) {
+      location = { lat: Number(c[1]), lng: Number(c[0]) };
+    } else if (cuerpo.lat != null && cuerpo.lng != null) {
+      location = { lat: Number(cuerpo.lat), lng: Number(cuerpo.lng) };
+    }
+    if (
+      location &&
+      (!Number.isFinite(location.lat) ||
+        !Number.isFinite(location.lng) ||
+        Math.abs(location.lat) > 90 ||
+        Math.abs(location.lng) > 180)
+    ) {
+      res.status(400).json({ error: "coordenadas fuera de rango" });
+      return;
+    }
+
+    const doc = await db.collection("places").add({
+      kind,
+      name,
+      reference: texto("direccion", 140) || texto("reference", 140),
+      location,
+      schedule: texto("horario", 60) || texto("schedule", 60),
+      notes: texto("notas", 200) || texto("notes", 200),
+      phone: texto("telefono", 25) || texto("phone", 25),
+      active: true,
+      confirmed: false,
+      confirmedByName: null,
+      zone: texto("zona", 40) || "otra",
+      createdByName: `${nombreSocio} (vía API)`,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info("punto aportado", { socio: nombreSocio, id: doc.id });
+    res.status(201).json({
+      id: doc.id,
+      confirmadoEnTerreno: false,
+      nota:
+        "Publicado como SIN CONFIRMAR. Aparece con esa advertencia hasta que " +
+        "alguien de terreno lo confirme. Si podes confirmarlo, escribinos.",
+      verlo: `https://ayudahumanitaria.info/donde-ir/`,
+    });
   },
 );

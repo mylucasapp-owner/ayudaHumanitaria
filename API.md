@@ -5,7 +5,16 @@ registro, sin cuota. Basta con pedir.
 
 En una emergencia, tres mapas distintos con datos parciales son peores que uno
 con todos: la gente no sabe cuál mirar. Esto existe para que un albergue
-publicado aquí aparezca en tu app sin que nadie lo teclee dos veces.
+publicado acá aparezca en tu app sin que nadie lo teclee dos veces.
+
+**No te estamos pidiendo que converjas acá.** Querer ser el centro donde todos
+confluyen es la misma ambición que hace que hoy existan quince apps que no se
+hablan, solo que con mejor discurso. Lo que ofrecemos es más simple: nuestros
+datos son tuyos sin condiciones, aceptamos los tuyos, y el código está para que
+lo despliegues por tu cuenta si te sirve más así.
+
+Si tu plataforma cubre mejor una región, decinos y te mandamos gente. Lo que se
+mide acá no es cuántos entran por nuestra puerta.
 
 Base: `https://ayudahumanitaria.info/api`
 (también `https://ayuda-humanitaria-89e72.web.app/api`)
@@ -102,6 +111,44 @@ beneficiado sería quien busca a quién estafar.
 **Si tu organización necesita ese nivel de detalle**, escríbenos a
 `errantelegal@gmail.com`: se resuelve con un acuerdo y una llave, no cerrando la
 puerta. Contanos quiénes son y para qué, y lo armamos.
+
+---
+
+## `POST /api/aportarPunto`
+
+La otra mitad: traer los tuyos. Sin esto, "intercambio" sería una forma elegante
+de decir "nuestra base de datos".
+
+Necesita una llave, y no es burocracia: publicar un albergue manda familias
+caminando hasta una puerta. Se pide en `errantelegal@gmail.com` contando quiénes
+son; se da a la organización entera, no persona por persona.
+
+```bash
+curl -X POST https://ayudahumanitaria.info/api/aportarPunto \
+  -H "Authorization: Bearer TU_LLAVE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tipo": "albergue",
+    "nombre": "Coliseo El Pueblo",
+    "direccion": "Carrera 52 con calle 5, Cali",
+    "lat": 3.4206, "lng": -76.5407,
+    "horario": "24 horas",
+    "telefono": "3001234567",
+    "notas": "Reciben familias con niños"
+  }'
+```
+
+`tipo` es uno de: `albergue`, `acopio`, `salud`, `agua`, `comida`. Solo `tipo` y
+`nombre` son obligatorios.
+
+Las coordenadas se aceptan como `lat`/`lng` o como `coordenadas: [lng, lat]` al
+estilo GeoJSON. Obligarte a un formato concreto es justo la fricción que hace
+que nadie se integre.
+
+**Lo que aportás sale como `confirmadoEnTerreno: false` y con el nombre de tu
+organización.** No es desconfianza: nadie de acá se paró en esa puerta, y decirlo
+es lo único honesto. Aparece con esa advertencia hasta que alguien de terreno lo
+confirme, y quien lo lea sabe de dónde salió y a quién preguntarle.
 
 ---
 

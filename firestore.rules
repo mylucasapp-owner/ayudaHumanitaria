@@ -617,6 +617,16 @@ service cloud.firestore {
       }
     }
 
+    // Organizaciones que aportan datos por la API.
+    //
+    // Nadie las lee ni las escribe desde el cliente: se dan de alta a mano con
+    // scripts/socios.mjs y solo las usa la funcion de la API para validar una
+    // llave. Se guarda el hash, no la llave: si esta coleccion se filtrara, no
+    // entregaria permisos de escritura a nadie.
+    match /partners/{partnerId} {
+      allow read, write: if false;
+    }
+
     // Fallos del cliente. Sin esto no habia forma de enterarse de que la app se
     // rompio para alguien: lo mas probable es que esa persona se vaya en
     // silencio y el fallo parezca desinteres.
