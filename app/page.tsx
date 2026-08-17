@@ -55,6 +55,9 @@ export default function Home() {
         <Link className="btn btn--ghost" href="/como-usar/">
           Cómo funciona · Instalar la app
         </Link>
+        <Link className="btn btn--ghost" href="/aliados/">
+          Datos abiertos · Otras plataformas
+        </Link>
         <Link className="btn btn--ghost" href="/validador/">
           Acceso validadores
         </Link>

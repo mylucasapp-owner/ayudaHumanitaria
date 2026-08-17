@@ -383,9 +383,31 @@ export const api = onRequest(
         return;
       }
 
+      if (ruta === "/aliados.json" || ruta === "/aliados") {
+        // Solo el nombre. La llave se guarda como hash y el contacto es de
+        // quien lo dio, no dato publico: reconocer a alguien no es exponerlo.
+        const snap = await db
+          .collection("partners")
+          .where("active", "==", true)
+          .limit(200)
+          .get();
+        res.json({
+          generado: new Date().toISOString(),
+          aliados: snap.docs
+            .map((d) => String(d.get("name") ?? ""))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, "es")),
+        });
+        return;
+      }
+
       res.status(404).json({
         error: "Ruta desconocida",
-        disponibles: ["/api/puntos.geojson", "/api/resumen.json"],
+        disponibles: [
+          "/api/puntos.geojson",
+          "/api/resumen.json",
+          "/api/aliados.json",
+        ],
       });
     } catch (e) {
       logger.error("fallo en la api publica", e);

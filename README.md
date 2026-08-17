@@ -170,3 +170,24 @@ esperando; curl no falla porque hace fallback. Solución:
 ```bash
 NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection" npm install
 ```
+
+
+## Licencia
+
+MIT. Usalo, adaptalo y desplegalo sin pedir permiso, incluso comercialmente:
+solo conservá el aviso de autoría.
+
+Si tu emergencia es otra —otro país, otro desastre— montá tu propia instancia en
+vez de esperar a que alguien cubra tu zona. Está pensado para eso: mirá
+"Adaptarlo a otra emergencia" más arriba. No hace falta avisar, aunque si nos
+escribís te ayudamos con lo que ya sabemos que duele.
+
+## Intercambio con otras plataformas
+
+Los datos de puntos son públicos y sin llave (`API.md`), y otras organizaciones
+pueden aportar los suyos. La página `/aliados/` lo explica de cara al público y
+reconoce a quien colabora.
+
+Lo que **no** se abre es el detalle de las necesidades: llevan la referencia
+escrita de una persona damnificada y abrir esas direcciones en una sola petición
+le serviría antes que a nadie a quien busca a quién estafar.
