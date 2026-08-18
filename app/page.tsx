@@ -15,14 +15,19 @@ export default function Home() {
 
       <OfflineNotice />
 
+      {/* Agrupadas en dos bloques y no en una sola columna de botones.
+          Cinco acciones seguidas del mismo tamaño se leen como un muro y hay
+          que examinarlas una por una; con el rótulo encima, quien llega sabe
+          en dos palabras cuál de las dos mitades es la suya y solo lee esa. */}
       <div className="stack" style={{ gap: 14 }}>
+        <span className="label">Si necesitas ayuda</span>
         <Link className="btn btn--primary btn--huge" href="/necesito/">
           Necesito ayuda
           <span className="btn__note">Reportar una necesidad urgente</span>
         </Link>
-        {/* Va con los damnificados y antes de "quiero ayudar": quien acaba de
-            perder la casa no viene a reportar una necesidad, viene a saber a
-            dónde ir esta noche. Era la pregunta que más se repetía. */}
+        {/* Antes de "quiero ayudar": quien acaba de perder la casa no viene a
+            reportar una necesidad, viene a saber a dónde ir esta noche. Era la
+            pregunta que más se repetía. */}
         <Link className="btn btn--huge" href="/donde-ir/">
           ¿A dónde ir?
           <span className="btn__note">
@@ -35,9 +40,24 @@ export default function Home() {
             Lo que otros están ofreciendo ahora
           </span>
         </Link>
+      </div>
+
+      <div className="stack" style={{ gap: 14 }}>
+        <hr className="hr" />
+        <span className="label">Si puedes ayudar</span>
         <Link className="btn btn--huge" href="/ayudar/">
           Quiero ayudar
           <span className="btn__note">Ver necesidades cerca de mí</span>
+        </Link>
+        {/* Al mismo nivel que ver necesidades, no escondida abajo. Mucha gente
+            no puede cubrir un pedido concreto pero sí tiene algo —un camión,
+            horas de su oficio, un espacio— y no se le ocurre que haya dónde
+            decirlo si no se lo ofreces con el mismo peso. */}
+        <Link className="btn btn--huge" href="/ofrezco/">
+          Tengo algo que ofrecer
+          <span className="btn__note">
+            Cosas, tiempo, un oficio, transporte
+          </span>
         </Link>
       </div>
 
@@ -55,9 +75,6 @@ export default function Home() {
 
       <nav className="stack" style={{ gap: 10 }}>
         <hr className="hr" />
-        <Link className="btn btn--ghost" href="/ofrezco/">
-          Tengo algo que ofrecer
-        </Link>
         <Link className="btn btn--ghost" href="/mis-reportes/">
           Mis reportes y compromisos
         </Link>

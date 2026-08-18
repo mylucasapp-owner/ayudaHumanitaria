@@ -136,6 +136,15 @@ function OfertasPage() {
       )}
 
       <div className="spacer" />
+      <hr className="hr" />
+      {/* Quien mira esto necesita algo. Si no lo encuentra entre lo ofrecido,
+          la salida no es irse: es pedirlo, que es para lo que existe la app. */}
+      <p className="meta center">
+        ¿No está lo que necesitas? Publícalo y alguien cerca lo verá.
+      </p>
+      <Link className="btn" href="/necesito/">
+        Pedir lo que necesito
+      </Link>
       <Link className="btn btn--ghost" href="/ofrezco/">
         Yo tengo algo que ofrecer
       </Link>

@@ -322,6 +322,24 @@ function AyudarPage() {
         {visible.length} de {needs.length} necesidades pendientes
         {!me && " · activa la ubicación para ordenar por cercanía"}
       </p>
+
+      {/* Puente hacia la otra mitad de ayudar.
+          Quien llega aquí quiere ayudar, pero puede no encontrar ni una sola
+          necesidad que pueda cubrir: le queda lejos, no tiene eso concreto, o
+          ya están todas tomadas. Sin esta salida se va, y esa persona sí tenía
+          algo —un camión, horas de su oficio, un espacio— que a nadie se le
+          ocurrió pedirle. Va también arriba cuando la lista sale vacía, que es
+          justo cuando más falta hace. */}
+      <div className="stack">
+        <hr className="hr" />
+        <p className="meta center">
+          ¿No hay ninguna que puedas cubrir? Lo que tengas sirve igual, aunque
+          nadie lo haya pedido todavía.
+        </p>
+        <Link className="btn" href="/ofrezco/">
+          Tengo algo que ofrecer
+        </Link>
+      </div>
     </main>
   );
 }
