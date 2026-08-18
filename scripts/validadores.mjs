@@ -23,7 +23,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const PROJECT = "ayuda-humanitaria-89e72";
-const APP_URL = "https://ayuda-humanitaria-89e72.web.app";
+const APP_URL = process.env.APP_URL ?? "https://ayudahumanitaria.info";
 
 function env(nombre) {
   const archivo = new URL("../.env.local", import.meta.url);

@@ -17,7 +17,7 @@
 import { chromium } from "playwright-core";
 import { existsSync } from "node:fs";
 
-const BASE = process.env.BASE ?? "https://ayuda-humanitaria-89e72.web.app";
+const BASE = process.env.BASE ?? "https://ayudahumanitaria.info";
 
 const CANDIDATOS = [
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",

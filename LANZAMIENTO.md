@@ -1,6 +1,7 @@
 # Lanzamiento
 
-URL en producción: **https://ayuda-humanitaria-89e72.web.app**
+URL en producción: **https://ayudahumanitaria.info**
+(el antiguo `ayuda-humanitaria-89e72.web.app` sigue vivo y redirige al mismo sitio)
 
 ## Lo que ya está en pie
 
@@ -48,7 +49,7 @@ cualquiera del grupo podría descartar reportes reales.
 > esa llave llega vacía: el coordinador ve *"The selected page mode is invalid"*
 > y se queda afuera. Además esa página está en inglés. Si algún día quieres que
 > Firebase envíe el correo, hay que cambiar el *action URL* a
-> `https://ayuda-humanitaria-89e72.web.app/clave/` desde la consola
+> `https://ayudahumanitaria.info/clave/` desde la consola
 > (Authentication → Templates), porque por API está bloqueado.
 
 ```bash
