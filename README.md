@@ -8,7 +8,7 @@ empresas. También publica a dónde ir: albergues, puntos de acopio, agua, comid
 y atención médica.
 
 Los datos de esos puntos son abiertos y otras plataformas pueden aportar los
-suyos ([API.md](API.md)). No para que nadie converja acá: para que un albergue
+suyos ([API.md](API.md)). No para que nadie converja aquí: para que un albergue
 publicado una vez aparezca en todos los mapas.
 
 Para poner esto en manos de la comunidad y la operación diaria, ver
@@ -209,13 +209,13 @@ NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection" np
 
 ## Licencia
 
-MIT. Usalo, adaptalo y desplegalo sin pedir permiso, incluso comercialmente:
-solo conservá el aviso de autoría.
+MIT. Úsalo, adáptalo y despliégalo sin pedir permiso, incluso comercialmente:
+solo conserva el aviso de autoría.
 
-Si tu emergencia es otra —otro país, otro desastre— montá tu propia instancia en
-vez de esperar a que alguien cubra tu zona. Está pensado para eso: mirá
+Si tu emergencia es otra —otro país, otro desastre— monta tu propia instancia en
+vez de esperar a que alguien cubra tu zona. Está pensado para eso: mira
 "Adaptarlo a otra emergencia" más arriba. No hace falta avisar, aunque si nos
-escribís te ayudamos con lo que ya sabemos que duele.
+escribes te ayudamos con lo que ya sabemos que duele.
 
 ## Intercambio con otras plataformas
 

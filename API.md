@@ -5,16 +5,16 @@ registro, sin cuota. Basta con pedir.
 
 En una emergencia, tres mapas distintos con datos parciales son peores que uno
 con todos: la gente no sabe cuál mirar. Esto existe para que un albergue
-publicado acá aparezca en tu app sin que nadie lo teclee dos veces.
+publicado aquí aparezca en tu app sin que nadie lo teclee dos veces.
 
-**No te estamos pidiendo que converjas acá.** Querer ser el centro donde todos
+**No te estamos pidiendo que converjas aquí.** Querer ser el centro donde todos
 confluyen es la misma ambición que hace que hoy existan quince apps que no se
 hablan, solo que con mejor discurso. Lo que ofrecemos es más simple: nuestros
 datos son tuyos sin condiciones, aceptamos los tuyos, y el código está para que
 lo despliegues por tu cuenta si te sirve más así.
 
-Si tu plataforma cubre mejor una región, decinos y te mandamos gente. Lo que se
-mide acá no es cuántos entran por nuestra puerta.
+Si tu plataforma cubre mejor una región, dinos y te mandamos gente. Lo que se
+mide aquí no es cuántos entran por nuestra puerta.
 
 Base: `https://ayudahumanitaria.info/api`
 (también `https://ayuda-humanitaria-89e72.web.app/api`)
@@ -67,10 +67,10 @@ omitirlos escondería albergues que existen. Trátalo, no lo asumas.
 Los publica un coordinador acreditado, nunca un anónimo: a un albergue se llega
 caminando y con la familia, y un dato falso ahí se paga caro.
 
-**Mirá `confirmadoEnTerreno` antes de republicar.** Cuando es `false`, el dato
+**Mira `confirmadoEnTerreno` antes de republicar.** Cuando es `false`, el dato
 viene de una lista o de un aviso, pero nadie se paró todavía en la puerta. Sigue
 siendo útil —una familia que no se entera de un albergue real también duerme
-afuera— pero mostralo con la misma advertencia con que lo mostramos nosotros. Un
+afuera— pero muéstralo con la misma advertencia con que lo mostramos nosotros. Un
 `false` presentado como certeza manda gente a caminar por nada.
 
 ---
@@ -110,7 +110,7 @@ beneficiado sería quien busca a quién estafar.
 
 **Si tu organización necesita ese nivel de detalle**, escríbenos a
 `errantelegal@gmail.com`: se resuelve con un acuerdo y una llave, no cerrando la
-puerta. Contanos quiénes son y para qué, y lo armamos.
+puerta. Cuéntanos quiénes son y para qué, y lo armamos.
 
 ---
 
@@ -145,8 +145,8 @@ Las coordenadas se aceptan como `lat`/`lng` o como `coordenadas: [lng, lat]` al
 estilo GeoJSON. Obligarte a un formato concreto es justo la fricción que hace
 que nadie se integre.
 
-**Lo que aportás sale como `confirmadoEnTerreno: false` y con el nombre de tu
-organización.** No es desconfianza: nadie de acá se paró en esa puerta, y decirlo
+**Lo que aportas sale como `confirmadoEnTerreno: false` y con el nombre de tu
+organización.** No es desconfianza: nadie de aquí se paró en esa puerta, y decirlo
 es lo único honesto. Aparece con esa advertencia hasta que alguien de terreno lo
 confirme, y quien lo lea sabe de dónde salió y a quién preguntarle.
 
@@ -165,10 +165,10 @@ confirme, y quien lo lea sabe de dónde salió y a quién preguntarle.
 
 ## Lo que nos sirve de vuelta
 
-Si publicás albergues o acopios que acá no están, avisanos. Lo ideal es que
+Si publicas albergues o acopios que aquí no están, avísanos. Lo ideal es que
 nadie tenga que elegir entre plataformas: que quien busque dónde dormir esta
 noche lo encuentre, entre por donde entre.
 
-Y si tenés una API abierta, pasánosla. Consumimos con gusto lo que ya esté
+Y si tienes una API abierta, pásanosla. Consumimos con gusto lo que ya esté
 publicado en otro lado antes que pedirle a un coordinador que lo teclee de
 nuevo: cada dato que se captura dos veces es tiempo robado a la emergencia.

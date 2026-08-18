@@ -10,7 +10,7 @@ import { useOrigen } from "@/lib/useOrigen";
  *
  * Está a la vista y no escondida en un README porque reconocer a otros
  * públicamente es lo más barato que se puede hacer y lo que más colaboración
- * atrae. Un equipo que ve su nombre acá entiende que no compite con nosotros.
+ * atrae. Un equipo que ve su nombre aquí entiende que no compite con nosotros.
  *
  * Se escribe con cuidado de no prometer que somos el centro de nada. La
  * ambición de ser la plataforma donde todos confluyen es la misma que produce
@@ -45,11 +45,11 @@ export default function Page() {
           con todos: la gente no sabe cuál mirar, y termina sin mirar ninguno.
         </p>
         <p className="meta">
-          <span className="strong">No pedimos que nadie converja acá.</span>{" "}
+          <span className="strong">No pedimos que nadie converja aquí.</span>{" "}
           Querer ser el centro donde todos confluyen es la misma ambición que
           hace que hoy existan quince aplicaciones que no se hablan, solo que
           con mejor discurso. Si otra plataforma cubre mejor una región, le
-          mandamos gente. Lo que se mide acá no es cuántos entran por nuestra
+          mandamos gente. Lo que se mide aquí no es cuántos entran por nuestra
           puerta.
         </p>
       </section>
@@ -63,7 +63,7 @@ export default function Page() {
         ) : aliados.length === 0 ? (
           <p className="empty">
             Todavía ninguna. Si tu organización ya tiene albergues o acopios
-            mapeados, podés ser la primera.
+            mapeados, puedes ser la primera.
           </p>
         ) : (
           <ul className="stack">
@@ -100,8 +100,8 @@ export default function Page() {
       <section className="stack">
         <h2 className="label">Traer los tuyos</h2>
         <p className="meta">
-          Si ya tenés puntos mapeados, se publican acá con el nombre de tu
-          organización. Escribinos a{" "}
+          Si ya tienes puntos mapeados, se publican aquí con el nombre de tu
+          organización. Escríbenos a{" "}
           <a className="strong" href={`mailto:${SITE.contactEmail}`}>
             {SITE.contactEmail}
           </a>{" "}
@@ -113,7 +113,7 @@ export default function Page() {
         <h2 className="label">Montar tu propia instancia</h2>
         <p className="meta">
           El código es libre bajo licencia MIT. Si tu emergencia es otra —otro
-          país, otro desastre— desplegá el tuyo en vez de esperar a que
+          país, otro desastre— despliega el tuyo en vez de esperar a que
           cubramos tu zona. No hay que pedir permiso ni avisar.
         </p>
         <a

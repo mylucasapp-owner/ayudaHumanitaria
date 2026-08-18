@@ -258,7 +258,7 @@ function PlaceCard({
         <p className="notice notice--signal">
           <span className="strong">Sin confirmar en terreno.</span> El dato viene
           de una lista, no de alguien que haya ido.{" "}
-          {place.phone ? "Llamá antes de salir." : "Si podés, preguntá antes de salir."}
+          {place.phone ? "Llama antes de salir." : "Si puedes, pregunta antes de salir."}
         </p>
       )}
 
