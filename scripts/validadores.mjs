@@ -10,6 +10,7 @@
  *   node scripts/validadores.mjs listar
  *   node scripts/validadores.mjs crear "Defensa Civil Comuna 3" Cali correo@ong.org
  *   node scripts/validadores.mjs crear "Bomberos Quibdó" Chocó correo@x.org --con-clave
+ *   node scripts/validadores.mjs clave correo@ong.org
  *   node scripts/validadores.mjs revocar correo@ong.org
  *
  * Para una cuenta nueva imprime un enlace de un solo uso para que el
@@ -206,6 +207,53 @@ async function crear(nombre, zona, correo, conClave, nuevaClave) {
   console.log(`\n  Después entrará por ${APP_URL}/validador/`);
 }
 
+/**
+ * Enlace nuevo para definir la contraseña de alguien ya acreditado.
+ *
+ * Pasa más de lo que parece: quien teclea una contraseña que no ve, en un
+ * teléfono y con prisa, se equivoca en un carácter y ya no puede entrar. Antes
+ * había que repetir el comando de alta con el nombre y la zona, que es pedirle
+ * al operador que recuerde datos para resolver algo urgente.
+ *
+ * No toca la contraseña actual: solo crea otro enlace de un solo uso. Si la
+ * anterior servía, sigue sirviendo.
+ */
+async function enlaceDeClave(correo) {
+  if (!correo) {
+    console.error("Uso: node scripts/validadores.mjs clave correo@ong.org");
+    process.exit(1);
+  }
+  const uid = await uidPorCorreo(correo);
+  if (!uid) {
+    console.error(`No existe una cuenta con el correo ${correo}`);
+    process.exit(1);
+  }
+  const token = tokenAdmin();
+  const { oobLink } = await pedir(
+    `https://identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:sendOobCode`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "x-goog-user-project": PROJECT,
+      },
+      body: JSON.stringify({
+        requestType: "PASSWORD_RESET",
+        email: correo,
+        returnOobLink: true,
+      }),
+    },
+  );
+  const codigo = new URL(oobLink).searchParams.get("oobCode");
+  console.log(
+    `\n  Enlace nuevo para ${correo}:\n` +
+      `\n  ${APP_URL}/clave/?mode=resetPassword&oobCode=${codigo}\n` +
+      "\n  De un solo uso y caduca. Su contraseña anterior sigue sirviendo" +
+      "\n  hasta que use este enlace, así que no se pierde nada por mandarlo.\n",
+  );
+}
+
 async function revocar(correo) {
   if (!correo) {
     console.error("Uso: node scripts/validadores.mjs revocar correo@ong.org");
@@ -234,12 +282,14 @@ const args = resto.filter((a) => !a.startsWith("--"));
 try {
   if (accion === "listar") await listar();
   else if (accion === "crear") await crear(args[0], args[1], args[2], conClave, nuevaClave);
+  else if (accion === "clave") await enlaceDeClave(args[0]);
   else if (accion === "revocar") await revocar(args[0]);
   else {
     console.log(
       "Acciones:\n" +
         "  listar\n" +
         '  crear "Nombre" "Zona" correo@ong.org [--con-clave|--nueva-clave]\n' +
+        "  clave correo@ong.org        (enlace nuevo para quien ya está acreditado)\n" +
         "  revocar correo@ong.org",
     );
   }

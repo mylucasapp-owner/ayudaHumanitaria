@@ -96,6 +96,9 @@ firebase deploy --only firestore:rules,firestore:indexes,functions
 
 ```bash
 node scripts/validadores.mjs crear "Defensa Civil Comuna 3" "Valle del Cauca" coordinacion@ong.org
+
+# Si alguien se equivoca al teclear su contraseña y no puede entrar:
+node scripts/validadores.mjs clave coordinacion@ong.org
 ```
 
 Crea la cuenta, la acredita y envía un correo para que definan su contraseña.

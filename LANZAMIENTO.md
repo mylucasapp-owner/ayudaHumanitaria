@@ -255,6 +255,18 @@ descargan, así que no cuentan para casi nadie.
    sesión de `gcloud` como dueño: hoy eres el único que puede hacerlo, y eso
    incluye las noches y los días sin señal.
 
+### Si un coordinador no puede entrar
+
+Pasa más de lo que parece: tecleó su contraseña sin verla, en un teléfono y con
+prisa, y falló un carácter.
+
+```bash
+node scripts/validadores.mjs clave correo@ong.org
+```
+
+Da un enlace nuevo de un solo uso. **No toca la contraseña actual**, así que no
+se pierde nada por mandarlo aunque la anterior sí sirviera.
+
 ### Cargar los puntos de una lista
 
 Si ya tienes los albergues en un WhatsApp, una hoja de cálculo o una lista
