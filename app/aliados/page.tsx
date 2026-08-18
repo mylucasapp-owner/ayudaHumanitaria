@@ -57,7 +57,7 @@ export default function Page() {
       <hr className="hr" />
 
       <section className="stack">
-        <h2 className="label">Organizaciones que aportan datos</h2>
+        <h2 className="label">Organizaciones que comparten datos</h2>
         {aliados === null ? (
           <p className="empty">Cargando…</p>
         ) : aliados.length === 0 ? (
@@ -66,13 +66,20 @@ export default function Page() {
             mapeados, puedes ser la primera.
           </p>
         ) : (
-          <ul className="stack">
-            {aliados.map((a) => (
-              <li key={a} className="card">
-                <span className="card__desc">{a}</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="stack">
+              {aliados.map((a) => (
+                <li key={a} className="card">
+                  <span className="card__desc">{a}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="meta">
+              Sus datos aparecen aquí con su nombre y un enlace a su ficha. El
+              intercambio va en las dos direcciones: unas nos traen los suyos y
+              de otras los tomamos nosotros.
+            </p>
+          </>
         )}
       </section>
 

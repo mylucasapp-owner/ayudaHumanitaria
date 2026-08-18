@@ -384,19 +384,38 @@ export const api = onRequest(
       }
 
       if (ruta === "/aliados.json" || ruta === "/aliados") {
+        // Se junta quien tiene llave para escribirnos con quien aparece como
+        // fuente de algo ya publicado. Listar solo lo primero dejaba fuera a
+        // las plataformas de las que leemos —la relacion mas comun— aunque sus
+        // datos estuvieran en pantalla: injusto, y ademas falso.
+        //
         // Solo el nombre. La llave se guarda como hash y el contacto es de
-        // quien lo dio, no dato publico: reconocer a alguien no es exponerlo.
-        const snap = await db
+        // quien lo dio: reconocer a alguien no es exponerlo.
+        const nombres = new Set<string>();
+
+        const conLlave = await db
           .collection("partners")
           .where("active", "==", true)
           .limit(200)
           .get();
+        for (const d of conLlave.docs) {
+          const n = String(d.get("name") ?? "").trim();
+          if (n) nombres.add(n);
+        }
+
+        const traidas = await db
+          .collection("offers")
+          .where("active", "==", true)
+          .limit(500)
+          .get();
+        for (const d of traidas.docs) {
+          const n = String(d.get("sourceName") ?? "").trim();
+          if (n) nombres.add(n);
+        }
+
         res.json({
           generado: new Date().toISOString(),
-          aliados: snap.docs
-            .map((d) => String(d.get("name") ?? ""))
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b, "es")),
+          aliados: [...nombres].sort((a, b) => a.localeCompare(b, "es")),
         });
         return;
       }
