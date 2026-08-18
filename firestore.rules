@@ -637,8 +637,15 @@ service cloud.firestore {
         return nueva().keys().hasOnly([
           'category', 'description', 'reference', 'location', 'amount',
           'contactName', 'contactPhone', 'status', 'active', 'zone',
-          'ownerUid', 'verified', 'verifiedByName', 'createdAt', 'updatedAt'
+          'ownerUid', 'verified', 'verifiedByName', 'sourceId', 'sourceName',
+          'sourceUrl', 'createdAt', 'updatedAt'
         ]) &&
+        // Procedencia: quien lee tiene derecho a saber de donde salio el dato.
+        (nueva().sourceId == null || nueva().sourceId is string) &&
+        (nueva().sourceName == null || (nueva().sourceName is string &&
+          nueva().sourceName.size() <= 60)) &&
+        (nueva().sourceUrl == null || (nueva().sourceUrl is string &&
+          nueva().sourceUrl.size() <= 300)) &&
         nueva().category in ['medico', 'medicamentos', 'rescate', 'agua',
           'refugio', 'transporte', 'personas', 'otro'] &&
         nueva().description is string &&

@@ -174,11 +174,31 @@ function FichaOferta({
         </span>
       </div>
 
+      {/* De dónde salió, cuando vino de otra plataforma. Republicar sin decir
+          la procedencia convierte un intercambio en una apropiación, y además
+          le quita a quien lee la posibilidad de preguntarle a la fuente. */}
+      {offer.sourceName && (
+        <p className="meta">
+          Publicado por <span className="strong">{offer.sourceName}</span>
+        </p>
+      )}
+
       {/* El teléfono es público a propósito: quien ofrece publicó para que lo
           llamen, y poner un peaje aquí sería cobrárselo a quien lo necesita. */}
       <a className="btn" href={`tel:${offer.contactPhone}`}>
         Llamar a {offer.contactName}
       </a>
+
+      {offer.sourceUrl && (
+        <a
+          className="btn btn--ghost"
+          href={offer.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Más información
+        </a>
+      )}
 
       {soyAutor && (
         <button

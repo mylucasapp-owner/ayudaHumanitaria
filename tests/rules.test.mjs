@@ -599,6 +599,9 @@ const OFERTA = {
   zone: "valle",
   verified: false,
   verifiedByName: null,
+  sourceId: null,
+  sourceName: null,
+  sourceUrl: null,
 };
 
 const oferta = (uid, extra = {}) => ({

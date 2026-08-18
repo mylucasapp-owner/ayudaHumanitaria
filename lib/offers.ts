@@ -61,6 +61,18 @@ export type Offer = {
   ownerUid: string;
   verified: boolean;
   verifiedByName: string | null;
+  /**
+   * Procedencia, cuando la oferta vino de otra plataforma.
+   *
+   * Se guarda el identificador de allá para poder volver a sincronizar sin
+   * duplicar, y el nombre para mostrarlo: quien lee tiene derecho a saber de
+   * dónde salió el dato y a quién preguntarle. Republicar sin decir de dónde
+   * viene convierte un intercambio en una apropiación.
+   */
+  sourceId: string | null;
+  sourceName: string | null;
+  /** Enlace del socio con más información: un volante, una ficha, un formulario. */
+  sourceUrl: string | null;
   createdAt: number | null;
   updatedAt: number | null;
 };
@@ -96,6 +108,9 @@ function toOffer(d: { id: string; data: () => Record<string, unknown> }): Offer 
     ownerUid: (v.ownerUid as string) ?? "",
     verified: (v.verified as boolean) ?? false,
     verifiedByName: (v.verifiedByName as string | null) ?? null,
+    sourceId: (v.sourceId as string | null) ?? null,
+    sourceName: (v.sourceName as string | null) ?? null,
+    sourceUrl: (v.sourceUrl as string | null) ?? null,
     createdAt: ms(v.createdAt),
     updatedAt: ms(v.updatedAt),
   };
@@ -141,6 +156,9 @@ export async function createOffer(uid: string, input: OfferInput) {
     ownerUid: uid,
     verified: false,
     verifiedByName: null,
+    sourceId: null,
+    sourceName: null,
+    sourceUrl: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

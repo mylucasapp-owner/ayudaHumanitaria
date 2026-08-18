@@ -169,6 +169,10 @@ Si publicas albergues o acopios que aquí no están, avísanos. Lo ideal es que
 nadie tenga que elegir entre plataformas: que quien busque dónde dormir esta
 noche lo encuentre, entre por donde entre.
 
+Ya lo hacemos: **Red Ayuda Cali** publica sus recursos en su propia API y sus
+ofertas aparecen aquí con su nombre y un enlace a su ficha. `scripts/importar.mjs`
+es el ejemplo funcionando, por si quieres ver cómo se integra el tuyo.
+
 Y si tienes una API abierta, pásanosla. Consumimos con gusto lo que ya esté
 publicado en otro lado antes que pedirle a un coordinador que lo teclee de
 nuevo: cada dato que se captura dos veces es tiempo robado a la emergencia.

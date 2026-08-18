@@ -282,6 +282,25 @@ Si una línea sale mal no se publica nada. Un albergue mal clasificado manda
 familias a dormir a una bodega cerrada, y un horario inventado las manda a una
 puerta cerrada: es preferible parar y arreglar el archivo.
 
+### Traer ofertas de otra plataforma
+
+```bash
+npm run importar -- revisar    # muestra qué entraría, sin publicar
+npm run importar -- publicar
+```
+
+Es idempotente: volver a correrlo actualiza lo que cambió allá —incluido pasar a
+no disponible— y no duplica nada. Vale la pena correrlo a diario mientras el
+socio siga actualizando.
+
+No entra lo marcado como `ALERTA_FRAUDE`: esa advertencia es lo más valioso de
+su lista. Tampoco entran las búsquedas de personas, aunque vengan mezcladas: una
+búsqueda es una necesidad, no una oferta, y publicarla ahí la mostraría como si
+alguien estuviera ofreciendo a esa persona. El script las lista aparte.
+
+La URL con el token va en `.env.local` como `SOCIO_URL`. Es una credencial y no
+puede vivir en el repositorio.
+
 ### Cada día, cinco minutos
 
 ```bash

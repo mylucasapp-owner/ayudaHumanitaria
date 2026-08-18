@@ -16,7 +16,8 @@
     "lint": "eslint app components lib",
     "humo": "node scripts/humo.mjs",
     "check": "npm run typecheck && npm run lint && npm test",
-    "puntos": "node --experimental-strip-types --import ./tests/register.mjs scripts/puntos.mjs"
+    "puntos": "node --experimental-strip-types --import ./tests/register.mjs scripts/puntos.mjs",
+    "importar": "node --experimental-strip-types --import ./tests/register.mjs scripts/importar.mjs"
   },
   "dependencies": {
     "firebase": "^11.0.0",
