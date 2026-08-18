@@ -64,8 +64,8 @@ export default function ComoUsarPage() {
         <h2 className="label">Si necesitas ayuda</h2>
         <ol className="stack" style={{ gap: 8 }}>
           <Paso n={1} titulo="Toca “Necesito ayuda”">
-            Elige qué necesitas: médico, rescate, agua y alimento, refugio o
-            transporte.
+            Elige qué necesitas: atención médica, medicamentos, rescate, agua y
+            alimento, refugio, transporte, o buscar a alguien.
           </Paso>
           <Paso n={2} titulo="Escribe una frase">
             Concreta y corta. “Insulina para 2 adultos mayores” sirve mucho más
@@ -80,12 +80,88 @@ export default function ComoUsarPage() {
             <span className="strong">Nunca aparece en el mapa público.</span>
           </Paso>
           <Paso n={5} titulo="Guarda tu código">
-            Con él sigues tu reporte y lo cierras cuando la ayuda llegue.
+            Con él sigues tu reporte y lo cierras cuando la ayuda llegue, y lo
+            recuperas si cambias de teléfono o el navegador borra sus datos.
           </Paso>
         </ol>
         <p className="meta">
           Sin señal el reporte igual se guarda en tu teléfono y sale solo cuando
           vuelva la conexión. No hace falta escribirlo de nuevo.
+        </p>
+        <p className="meta">
+          <span className="strong">Puedes corregirlo después.</span> Si
+          conseguiste parte de lo que pedías, cambiaste de sitio o eran más
+          personas de las que dijiste, entra a tu reporte y edítalo: no hace
+          falta cerrarlo y publicar otro.
+        </p>
+        <p className="meta">
+          <span className="strong">Compártelo.</span> Desde tu reporte puedes
+          mandarlo por WhatsApp. Ese enlace no muestra tu teléfono, así que
+          reenviarlo a grupos del barrio no te expone.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">A dónde ir</h2>
+        <p>
+          En{" "}
+          <Link className="strong" href="/donde-ir/">
+            ¿A dónde ir?
+          </Link>{" "}
+          están los albergues y puntos de acopio que conocen los coordinadores.
+        </p>
+        <p className="meta">
+          Fíjate si dice{" "}
+          <span className="strong">sin confirmar en terreno</span>: significa
+          que el dato viene de una lista y que nadie de aquí se paró en esa
+          puerta. Sigue siendo útil, pero llama antes de salir. Y si vas y está
+          lleno o cerrado, avísalo desde la ficha: le ahorras el viaje a la
+          siguiente familia.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">Qué hay disponible ahora</h2>
+        <p>
+          En{" "}
+          <Link className="strong" href="/ofertas/">
+            Ayuda disponible
+          </Link>{" "}
+          está lo que personas y organizaciones están ofreciendo: transporte,
+          atención, alojamiento, cosas concretas. No hace falta que lo hayas
+          pedido: si te sirve, llama al número que aparece.
+        </p>
+        <p className="notice notice--error">
+          <span className="strong">La ayuda no se paga. Nunca.</span> Si alguien
+          te pide plata, un depósito, una recarga o datos de tu cuenta, es una
+          estafa: no le pagues y denúncialo desde la ficha.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">Si buscas a alguien</h2>
+        <p>
+          Usa la categoría{" "}
+          <span className="strong">Busco a alguien</span>, que también sirve
+          para mascotas perdidas. Escribe lo que ayude a reconocerla: edad,
+          ropa, dónde se la vio por última vez.
+        </p>
+        <p className="meta">
+          Funciona distinto al resto:{" "}
+          <span className="strong">nadie la “toma” ni la bloquea</span>. A una
+          persona no la encuentra uno, la encuentran varios, así que cualquiera
+          que tenga información puede avisarte, y lo que más ayuda es difundirla.
+        </p>
+        <p className="meta">
+          Y al revés: si encontraste a una persona desorientada o a una mascota,
+          publícalo desde{" "}
+          <Link className="strong" href="/ofrezco/">
+            Tengo algo que ofrecer
+          </Link>{" "}
+          con la opción <span className="strong">Encontré a alguien</span>.
         </p>
       </section>
 
@@ -112,6 +188,13 @@ export default function ComoUsarPage() {
             cumplir, libérala: vuelve a la lista al instante.
           </Paso>
         </ol>
+        <p className="meta">
+          <span className="strong">
+            ¿No hay ninguna que puedas cubrir?
+          </span>{" "}
+          Publica lo que tengas de todos modos. Mucha gente tiene algo útil que
+          nadie ha pedido todavía porque no sabe que existe.
+        </p>
       </section>
 
       <section className="stack" style={{ gap: 10 }}>
@@ -141,26 +224,6 @@ export default function ComoUsarPage() {
 
       <section className="stack" style={{ gap: 10 }}>
         <hr className="hr" />
-        <h2 className="label">A dónde ir</h2>
-        <p>
-          En{" "}
-          <Link className="strong" href="/donde-ir/">
-            ¿A dónde ir?
-          </Link>{" "}
-          están los albergues y puntos de acopio que conocen los coordinadores.
-        </p>
-        <p className="meta">
-          Fíjate si dice{" "}
-          <span className="strong">sin confirmar en terreno</span>: significa
-          que el dato viene de una lista y que nadie de aquí se paró en esa
-          puerta. Sigue siendo útil, pero llama antes de salir. Y si vas y está
-          lleno o cerrado, avísalo desde la ficha: le ahorras el viaje a la
-          siguiente familia.
-        </p>
-      </section>
-
-      <section className="stack" style={{ gap: 10 }}>
-        <hr className="hr" />
         <h2 className="label">Si eres coordinador en terreno</h2>
         <p>
           ONG, bomberos, defensa civil, juntas de acción comunal y líderes
@@ -175,6 +238,20 @@ export default function ComoUsarPage() {
           La acreditación se otorga a mano, una por una. Escribe a{" "}
           <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>{" "}
           contando a qué organización perteneces y qué zona cubres.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">Si vienes de otra plataforma</h2>
+        <p className="meta">
+          Los albergues y puntos de acopio de aquí son datos abiertos: cualquier
+          otra aplicación puede mostrarlos sin pedir permiso, y aceptamos los de
+          quien quiera traerlos. Está explicado en{" "}
+          <Link className="strong" href="/aliados/">
+            Intercambio abierto
+          </Link>
+          .
         </p>
       </section>
 
