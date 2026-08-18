@@ -49,7 +49,7 @@ export const CATEGORY_SUMMARY: Record<Category, string> = {
   agua: "Agua potable, comida, elementos de aseo",
   refugio: "Dónde dormir, carpas, cobijas, ropa",
   transporte: "Traslados de personas o de ayuda",
-  personas: "Familiares o vecinos desaparecidos",
+  personas: "Familiares, vecinos o mascotas perdidas",
   otro: "Peritajes, funerarias, veterinarios, lo demás",
 };
 
@@ -61,7 +61,7 @@ export const CATEGORY_HINT: Record<Category, string> = {
   agua: "Ej: agua potable para 12 personas, 2 bebés",
   refugio: "Ej: carpa y frazadas para familia de 5",
   transporte: "Ej: traslado de herido a hospital regional",
-  personas: "Ej: María Restrepo, 68 años, vista por última vez el martes",
+  personas: "Ej: María Restrepo, 68 años, vista el martes · perro café, collar rojo",
   otro: "Ej: evaluar daños de la casa antes de volver a habitarla",
 };
 
@@ -73,6 +73,11 @@ export const CATEGORY_HINT: Record<Category, string> = {
  * necesita no es que un voluntario se comprometa a entregarla: necesita que la
  * vea la mayor cantidad de gente posible. Por eso en estas fichas lo que se
  * ofrece primero es difundir, no tomar.
+ *
+ * Incluye mascotas, y no es un detalle sentimental: en los datos reales de una
+ * plataforma aliada las mascotas perdidas eran tantas como las personas. Para
+ * una familia que lo perdió todo, el perro es parte de lo que perdió, y la
+ * mecánica es idéntica: alguien la vio y hay que poder avisar.
  */
 export function isSearch(category: Category): boolean {
   return category === "personas";

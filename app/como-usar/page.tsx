@@ -47,6 +47,13 @@ export default function ComoUsarPage() {
           en el mapa, quien puede cubrirlo lo ve y se compromete. Coordinadores
           en terreno verifican que lo publicado sea real.
         </p>
+        <p>
+          También responde dos preguntas que aparecen enseguida:{" "}
+          <span className="strong">a dónde ir</span> —albergues, puntos de
+          acopio, agua, comida y atención médica— y{" "}
+          <span className="strong">qué hay disponible</span>, que es lo que
+          personas y organizaciones están ofreciendo ahora mismo.
+        </p>
         <p className="meta">
           No se pide registro, ni correo, ni cuenta. Entrar cuesta un toque.
         </p>
@@ -109,11 +116,60 @@ export default function ComoUsarPage() {
 
       <section className="stack" style={{ gap: 10 }}>
         <hr className="hr" />
+        <h2 className="label">Si tienes algo que ofrecer</h2>
+        <p>
+          No hace falta que alguien lo haya pedido. Si tienes cobijas, un
+          camión, horas de tu oficio o un espacio, publícalo en{" "}
+          <Link className="strong" href="/ofrezco/">
+            Tengo algo que ofrecer
+          </Link>{" "}
+          y quien lo necesite te llama directamente.
+        </p>
+        <p className="meta">
+          <span className="strong">Ahí tu teléfono sí es público</span>, al
+          revés que en una necesidad. Es a propósito: publicas para que te
+          llamen, y quien acaba de perderlo todo no debería tener que pedir
+          permiso para hacerlo. Cuando se acabe lo que ofreces, ciérralo: una
+          oferta vieja hace que alguien llame para nada.
+        </p>
+        <p className="notice notice--error">
+          <span className="strong">La ayuda no se paga. Nunca.</span> Si alguien
+          te pide plata, un depósito o datos de tu cuenta para entregarte algo,
+          es una estafa: no le pagues y denúncialo desde la ficha.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">A dónde ir</h2>
+        <p>
+          En{" "}
+          <Link className="strong" href="/donde-ir/">
+            ¿A dónde ir?
+          </Link>{" "}
+          están los albergues y puntos de acopio que conocen los coordinadores.
+        </p>
+        <p className="meta">
+          Fíjate si dice{" "}
+          <span className="strong">sin confirmar en terreno</span>: significa
+          que el dato viene de una lista y que nadie de aquí se paró en esa
+          puerta. Sigue siendo útil, pero llama antes de salir. Y si vas y está
+          lleno o cerrado, avísalo desde la ficha: le ahorras el viaje a la
+          siguiente familia.
+        </p>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
         <h2 className="label">Si eres coordinador en terreno</h2>
         <p>
           ONG, bomberos, defensa civil, juntas de acción comunal y líderes
           comunitarios pueden verificar necesidades, liberar compromisos que no
           se concretaron y descartar reportes falsos.
+        </p>
+        <p className="meta">
+          Además de verificar necesidades, publicas los puntos a donde ir y
+          puedes ubicar en el mapa los reportes que llegaron sin coordenadas.
         </p>
         <p className="meta">
           La acreditación se otorga a mano, una por una. Escribe a{" "}

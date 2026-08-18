@@ -75,6 +75,12 @@ export default function LegalPage() {
           verificación de un coordinador ayuda, pero no es una certificación
           oficial ni un aval de nadie.
         </p>
+        <p>
+          <span className="strong">La ayuda de esta plataforma no se paga.</span>{" "}
+          Nadie que ofrezca algo aquí debería pedirte plata, un depósito, una
+          recarga ni datos de tu cuenta. Si pasa, es una estafa: no pagues y
+          denúncialo desde la ficha.
+        </p>
       </section>
 
       <section className="stack" style={{ gap: 10 }}>
@@ -89,7 +95,9 @@ export default function LegalPage() {
             contactar después.
           </Item>
           <Item>
-            Recolectar, copiar o extraer datos de la plataforma de forma masiva.
+            Recolectar, copiar o extraer datos de la plataforma de forma
+            masiva. Si tu organización necesita los datos para coordinar, hay
+            una vía abierta y sin llave: escríbenos.
           </Item>
           <Item>
             Suplantar a otra persona, a una organización, a un coordinador o a
@@ -124,10 +132,23 @@ export default function LegalPage() {
             plataforma: es lo que permite que alguien te encuentre.
           </Item>
           <Item>
-            <span className="strong">Tu nombre y teléfono de contacto:</span>{" "}
+            <span className="strong">
+              Tu nombre y teléfono, cuando pides ayuda:
+            </span>{" "}
             <span className="strong">no son públicos</span>. Se guardan aparte y
             solo los alcanzan quien se compromete a cubrir tu necesidad mientras
-            ese compromiso esté vigente, y los coordinadores acreditados.
+            ese compromiso esté vigente, y los coordinadores acreditados. En una
+            búsqueda de personas el acceso no es exclusivo —varias personas
+            pueden tener información— pero se registra igual.
+          </Item>
+          <Item>
+            <span className="strong">
+              Tu nombre y teléfono, cuando ofreces ayuda:
+            </span>{" "}
+            <span className="strong">sí son públicos</span>, y se te avisa antes
+            de publicar. Es al revés a propósito: publicas para que te llamen, y
+            quien acaba de perderlo todo no debería tener que pedir permiso para
+            hacerlo.
           </Item>
           <Item>
             <span className="strong">Un identificador anónimo</span> que crea tu
@@ -139,11 +160,23 @@ export default function LegalPage() {
             queda anotado qué cuenta accedió al teléfono de qué necesidad. Es lo
             que permite investigar si alguien usa mal esos datos.
           </Item>
+          <Item>
+            <span className="strong">Fallos de la aplicación:</span> cuando algo
+            se rompe se guarda el error técnico, la pantalla donde ocurrió y el
+            modelo de navegador. Nunca se guarda lo que escribiste ni tu
+            teléfono, y no se manda a ningún servicio externo: se queda en el
+            mismo proyecto que el resto.
+          </Item>
         </ul>
         <p className="meta">
           No se pide documento de identidad, correo, ni datos bancarios. No hay
           publicidad ni rastreadores de terceros. Los datos no se venden ni se
           ceden con fines comerciales.
+        </p>
+        <p className="meta">
+          El mapa lo dibuja un proveedor externo (Stadia Maps y OpenStreetMap),
+          que por tanto ve desde qué zona se está mirando. Es lo único que sale
+          de aquí sin que lo decidas.
         </p>
       </section>
 
@@ -161,6 +194,29 @@ export default function LegalPage() {
             emergencia y para poder auditar qué pasó.
           </Item>
         </ul>
+      </section>
+
+      <section className="stack" style={{ gap: 10 }}>
+        <hr className="hr" />
+        <h2 className="label">Datos abiertos y otras plataformas</h2>
+        <p>
+          Los albergues y puntos de acopio se publican en abierto para que otras
+          aplicaciones puedan mostrarlos: son sitios públicos, y que aparezcan en
+          más mapas solo ayuda a que alguien los encuentre.
+        </p>
+        <p>
+          <span className="strong">
+            Las necesidades individuales no se abren.
+          </span>{" "}
+          Hacia afuera solo salen cuentas —cuántas hay por zona y por tipo—,
+          nunca tu descripción, tu dirección ni tu teléfono.
+        </p>
+        <p className="meta">
+          También se publican aquí ofertas que vienen de plataformas aliadas.
+          Aparecen siempre con el nombre de quién las trajo y un enlace a su
+          ficha, para que sepas de dónde salió el dato y a quién preguntarle.
+          Que estén aquí no significa que las hayamos comprobado.
+        </p>
       </section>
 
       <section className="stack" style={{ gap: 10 }}>

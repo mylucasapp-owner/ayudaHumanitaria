@@ -70,8 +70,53 @@ const CATEGORIAS = {
   Albergue: "refugio",
 };
 
-/** Categorías que NO son ofertas y no deben entrar aquí. */
+/** Categorías del socio que nunca son ofertas. */
 const NO_SON_OFERTAS = new Set(["Desaparecidos", "Desaparecido", "Personas"]);
+
+/**
+ * Distinguir "busco esto" de "tengo esto" dentro de una categoría mixta.
+ *
+ * La categoría del socio no alcanza: "Mascotas" trae veterinaria gratis y
+ * mascotas ENCONTRADAS —las dos son ofertas— junto a mascotas perdidas, que son
+ * búsquedas. Sin esto se coló "Gato Rey Thor perdido" en la pantalla de ayuda
+ * disponible, como si alguien estuviera ofreciendo el gato.
+ *
+ * El orden importa. Primero se descartan los canales institucionales y los
+ * avisos de "encontrado", porque contienen las mismas palabras que una
+ * búsqueda: "Reportar desaparecidos" de Medicina Legal es un formulario oficial
+ * para denunciar, no alguien buscando a nadie. Al filtrar solo por palabras
+ * sueltas quedaba fuera, que es el error contrario y también le quita a alguien
+ * un recurso útil.
+ */
+const MARCAS_DE_SERVICIO = [
+  "reportar", "reporte de", "sistema para", "formulario", "ingresa los datos",
+  "encontrad", "gratis", "a disposicion", "a disposición",
+];
+
+const MARCAS_DE_BUSQUEDA = [
+  "perdido", "perdida", "perdidos", "perdidas",
+  "se busca", "buscamos a", "desaparecid", "extraviad", "no aparece",
+  "quien lo haya visto", "quien la haya visto", "visto por ultima vez",
+];
+
+function normalizar(t) {
+  return String(t ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function esBusqueda(r) {
+  const t = normalizar(`${r.titulo ?? ""} ${r.descripcion ?? ""}`);
+
+  // Las entidades publican canales, nunca buscan: sacarlas primero evita que
+  // "Reportar desaparecidos" se lea como una desaparición.
+  if (r.categoria === "Entidades") return false;
+  if (MARCAS_DE_SERVICIO.some((k) => t.includes(normalizar(k)))) return false;
+
+  if (NO_SON_OFERTAS.has(r.categoria)) return true;
+  return MARCAS_DE_BUSQUEDA.some((k) => t.includes(normalizar(k)));
+}
 
 /** 573043892004 -> +573043892004, para que el enlace de llamada funcione. */
 function telefono(t) {
@@ -125,9 +170,9 @@ if (!Array.isArray(crudo)) {
 const fraude = crudo.filter(
   (r) => String(r.estado ?? "").toUpperCase() === "ALERTA_FRAUDE",
 );
-const busquedas = crudo.filter((r) => NO_SON_OFERTAS.has(r.categoria));
+const busquedas = crudo.filter(esBusqueda);
 const ofertas = crudo
-  .filter((r) => !NO_SON_OFERTAS.has(r.categoria))
+  .filter((r) => !esBusqueda(r))
   .filter((r) => String(r.estado ?? "").toUpperCase() !== "ALERTA_FRAUDE")
   .map(mapear)
   .filter((o) => o.description.length >= 3);
@@ -150,7 +195,8 @@ if (fraude.length) {
 }
 if (busquedas.length) {
   console.log(
-    `${busquedas.length} búsqueda(s) de personas, que NO se importan como ofertas:\n`,
+    `${busquedas.length} búsqueda(s) —de personas o de mascotas— que NO se\n` +
+      "importan como ofertas:\n",
   );
   for (const b of busquedas) {
     console.log(
@@ -160,8 +206,9 @@ if (busquedas.length) {
   }
   console.log(
     "\nUna búsqueda es una necesidad, no una oferta: publicarla aquí la\n" +
-      "mostraría como si alguien estuviera ofreciendo a esa persona. Si alguna\n" +
-      "sigue activa, publícala desde la app con la categoría BUSCO A ALGUIEN.\n",
+      "mostraría como si alguien estuviera ofreciendo a esa persona o a ese\n" +
+      "animal. Si alguna sigue activa, publícala desde la app con la categoría\n" +
+      "BUSCO A ALGUIEN, que también cubre mascotas.\n",
   );
 }
 
@@ -263,7 +310,36 @@ for (const o of ofertas) {
   }
 }
 
+// Lo que este socio publicó antes y ya no corresponde: desapareció de su lista,
+// o —como pasó con las mascotas perdidas— resultó ser una búsqueda y nunca
+// debió entrar como oferta. Se retira, no se borra: el rastro de qué se publicó
+// y cuándo importa, y alguien pudo haber llamado.
+const vigentes = new Set(ofertas.map((o) => o.sourceId));
+let retiradas = 0;
+for (const [sid, docId] of existentes) {
+  if (vigentes.has(sid)) continue;
+  const r = await fetch(
+    `${FS}/offers/${docId}?updateMask.fieldPaths=active&updateMask.fieldPaths=status&updateMask.fieldPaths=updatedAt`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fields: {
+          active: { booleanValue: false },
+          status: { stringValue: "agotada" },
+          updatedAt: { timestampValue: new Date().toISOString() },
+        },
+      }),
+    },
+  );
+  if (r.ok) retiradas++;
+}
+
 console.log(
-  `\n${creadas} nueva(s), ${actualizadas} actualizada(s), a nombre de ` +
-    `"${SOCIO_NOMBRE}".\nVolver a correrlo actualiza; no duplica.\n`,
+  `\n${creadas} nueva(s), ${actualizadas} actualizada(s), ` +
+    `${retiradas} retirada(s), a nombre de "${SOCIO_NOMBRE}".\n` +
+    "Volver a correrlo actualiza; no duplica.\n",
 );
