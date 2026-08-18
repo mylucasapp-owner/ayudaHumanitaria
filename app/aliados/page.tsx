@@ -118,7 +118,7 @@ export default function Page() {
         </p>
         <a
           className="btn btn--ghost"
-          href="https://github.com/mylucasapp-owner/ayudaHumanitaria"
+          href="https://github.com/e1errante/ayudaHumanitaria"
           target="_blank"
           rel="noopener noreferrer"
         >
