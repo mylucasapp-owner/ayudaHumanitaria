@@ -255,6 +255,33 @@ descargan, así que no cuentan para casi nadie.
    sesión de `gcloud` como dueño: hoy eres el único que puede hacerlo, y eso
    incluye las noches y los días sin señal.
 
+### Cargar los puntos de una lista
+
+Si ya tienes los albergues en un WhatsApp, una hoja de cálculo o una lista
+escrita a mano, no los metas uno por uno. Pega una línea por sitio en un archivo
+de texto y:
+
+```bash
+npm run puntos -- revisar lista.txt
+```
+
+Muestra qué entendió de cada línea **sin publicar nada**, y marca con ⚠ las que
+no le cuadran. No exige formato: separa por guiones, barras, punto y coma o
+comas, y adivina cuál es el teléfono, el horario y la dirección.
+
+Cuando todo esté bien:
+
+```bash
+npm run puntos -- publicar lista.txt --por "Defensa Civil Comuna 3"
+```
+
+Se publican **sin confirmar**, con la advertencia de llamar antes de ir. Es lo
+honesto: vienen de una lista, nadie se paró en esa puerta.
+
+Si una línea sale mal no se publica nada. Un albergue mal clasificado manda
+familias a dormir a una bodega cerrada, y un horario inventado las manda a una
+puerta cerrada: es preferible parar y arreglar el archivo.
+
 ### Cada día, cinco minutos
 
 ```bash

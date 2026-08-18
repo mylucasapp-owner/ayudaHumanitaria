@@ -172,6 +172,7 @@ Tres lugares, y ninguno más:
 ```
 scripts/validadores.mjs  acreditar, listar y revocar coordinadores
 scripts/socios.mjs       llaves para organizaciones que aportan datos
+scripts/puntos.mjs       carga albergues y acopios desde una lista de texto
 scripts/diagnosticos.mjs fallos del cliente de las últimas horas, agrupados
 scripts/humo.mjs         abre cada pantalla en un navegador real
 ```

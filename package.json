@@ -15,7 +15,8 @@
     "deploy": "npm run check && next build && firebase deploy",
     "lint": "eslint app components lib",
     "humo": "node scripts/humo.mjs",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "puntos": "node --experimental-strip-types --import ./tests/register.mjs scripts/puntos.mjs"
   },
   "dependencies": {
     "firebase": "^11.0.0",
