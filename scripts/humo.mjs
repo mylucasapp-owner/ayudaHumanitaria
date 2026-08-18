@@ -42,6 +42,8 @@ const RUTAS = [
   "/validador/",
   "/clave/",
   "/aliados/",
+  "/ofertas/",
+  "/ofrezco/",
 ];
 
 const ejecutable = CANDIDATOS.find((p) => existsSync(p));

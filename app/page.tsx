@@ -29,6 +29,12 @@ export default function Home() {
             Albergues, acopios, agua y comida cerca
           </span>
         </Link>
+        <Link className="btn btn--huge" href="/ofertas/">
+          Ayuda disponible
+          <span className="btn__note">
+            Lo que otros están ofreciendo ahora
+          </span>
+        </Link>
         <Link className="btn btn--huge" href="/ayudar/">
           Quiero ayudar
           <span className="btn__note">Ver necesidades cerca de mí</span>
@@ -49,6 +55,9 @@ export default function Home() {
 
       <nav className="stack" style={{ gap: 10 }}>
         <hr className="hr" />
+        <Link className="btn btn--ghost" href="/ofrezco/">
+          Tengo algo que ofrecer
+        </Link>
         <Link className="btn btn--ghost" href="/mis-reportes/">
           Mis reportes y compromisos
         </Link>

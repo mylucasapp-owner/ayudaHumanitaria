@@ -16,7 +16,7 @@
 */
 
 // Subir esta versión invalida todas las cachés en el próximo despliegue.
-const VERSION = "v10";
+const VERSION = "v11";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const TILES = `tiles-${VERSION}`;
@@ -47,6 +47,8 @@ const SHELL_URLS = [
   // no tiene datos, y la lista ya vista sigue sirviendo desde la caché.
   "/donde-ir/",
   "/aliados/",
+  "/ofertas/",
+  "/ofrezco/",
   "/validador/puntos/",
   // Faltaban, y sin precargar el respaldo servía el inicio en su lugar. Un
   // coordinador con mala señal abría la portada en vez de su panel.

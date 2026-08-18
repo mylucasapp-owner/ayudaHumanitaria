@@ -585,3 +585,137 @@ test("quien llego puede avisar que el sitio SI funciona, no solo que fallo", asy
     false,
   );
 });
+
+const OFERTA = {
+  category: "refugio",
+  description: "200 cobijas nuevas",
+  reference: "Bodega en Yumbo",
+  location: { lat: 3.5, lng: -76.5 },
+  amount: "200 unidades",
+  contactName: "Carlos",
+  contactPhone: "3001234567",
+  status: "disponible",
+  active: true,
+  zone: "valle",
+  verified: false,
+  verifiedByName: null,
+};
+
+const oferta = (uid, extra = {}) => ({
+  ...OFERTA, ownerUid: uid, ...extra,
+  createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+});
+
+test("cualquiera publica una oferta, pero no nace verificada", async () => {
+  const a = await anonActor("ofrece-carlos");
+  assert.equal(
+    await denied(() => setDoc(doc(collection(a.db, "offers")), oferta(a.uid))),
+    false,
+  );
+  // Autoproclamarse verificada seria regalarse la credibilidad que da un
+  // coordinador, que es justo lo que mira alguien antes de ir a recoger algo.
+  assert.ok(
+    await denied(() =>
+      setDoc(doc(collection(a.db, "offers")), oferta(a.uid, {
+        verified: true, verifiedByName: "Yo mismo",
+      })),
+    ),
+  );
+});
+
+test("nadie publica una oferta a nombre de otro ni la reescribe", async () => {
+  const a = await anonActor("ofrece-dueno");
+  const ref = doc(collection(a.db, "offers"));
+  await setDoc(ref, oferta(a.uid));
+
+  const b = await anonActor("ofrece-intruso");
+  assert.ok(
+    await denied(() => setDoc(doc(collection(b.db, "offers")), oferta(a.uid))),
+    "publicar a nombre de otro",
+  );
+  assert.ok(
+    await denied(() =>
+      updateDoc(doc(b.db, ref.path), {
+        ...OFERTA, ownerUid: a.uid, description: "Cambiada por un tercero",
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+    "reescribir la oferta de otro",
+  );
+});
+
+test("solo un coordinador verifica o descarta una oferta", async () => {
+  const a = await anonActor("ofrece-verif");
+  const ref = doc(collection(a.db, "offers"));
+  await setDoc(ref, oferta(a.uid));
+
+  // El autor no puede ponerse el sello.
+  assert.ok(
+    await denied(() =>
+      updateDoc(doc(a.db, ref.path), {
+        ...OFERTA, ownerUid: a.uid, verified: true, verifiedByName: "Yo",
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+    "el autor poniendose el sello de verificada",
+  );
+
+  const v = await validatorActor("val-oferta");
+  assert.equal(
+    await denied(() =>
+      updateDoc(doc(v.db, ref.path), {
+        ...OFERTA, ownerUid: a.uid, verified: true, verifiedByName: "Defensa Civil",
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+    false,
+  );
+
+  // Y puede descartarla si resulta ser una estafa.
+  assert.equal(
+    await denied(() =>
+      updateDoc(doc(v.db, ref.path), {
+        ...OFERTA, ownerUid: a.uid, status: "falsa", active: false,
+        verified: true, verifiedByName: "Defensa Civil",
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+    false,
+  );
+});
+
+test("una oferta se denuncia por estafa, y no se borra nunca", async () => {
+  const a = await anonActor("ofrece-denuncia");
+  const ref = doc(collection(a.db, "offers"));
+  await setDoc(ref, oferta(a.uid));
+
+  const victima = await anonActor("victima-estafa");
+  assert.equal(
+    await denied(() =>
+      setDoc(doc(victima.db, `${ref.path}/flags/${victima.uid}`), {
+        offerId: ref.id, uid: victima.uid, reason: "estafa", at: serverTimestamp(),
+      }),
+    ),
+    false,
+  );
+
+  // Borrar dejaria sin rastro a quien intento estafar.
+  assert.ok(await denied(() => deleteDoc(doc(a.db, ref.path))));
+});
+
+test("ni el autor ni un coordinador pueden mover la fecha de publicacion", async () => {
+  const a = await anonActor("ofrece-fecha");
+  const ref = doc(collection(a.db, "offers"));
+  await setDoc(ref, oferta(a.uid));
+
+  // Reescribir createdAt dejaria colar una oferta vieja como recien puesta,
+  // que es exactamente lo que mira alguien para decidir si todavia hay algo.
+  assert.ok(
+    await denied(() =>
+      updateDoc(doc(a.db, ref.path), {
+        ...OFERTA, ownerUid: a.uid,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      }),
+    ),
+  );
+});

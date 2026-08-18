@@ -617,6 +617,105 @@ service cloud.firestore {
       }
     }
 
+    // Ofertas de ayuda: lo que alguien tiene y quiere dar.
+    //
+    // Es la direccion contraria del resto de la app, y por eso el telefono aqui
+    // SI es publico. Quien ofrece no es una persona vulnerable: publica porque
+    // quiere que lo llamen. Ponerle el cupo que protege a los damnificados
+    // seria cobrarle un peaje a quien mas lo necesita para poder pedirle.
+    //
+    // El riesgo real es la estafa: quien pide un deposito por adelantado y
+    // desaparece, con una victima que ya lo perdio todo. Contra eso, las mismas
+    // defensas que las necesidades: denuncia de la comunidad y descarte por
+    // coordinadores.
+    match /offers/{offerId} {
+      function actual() { return resource.data; }
+      function nueva() { return request.resource.data; }
+      function esAutor() { return signedIn() && actual().ownerUid == uid(); }
+
+      function camposDeOferta() {
+        return nueva().keys().hasOnly([
+          'category', 'description', 'reference', 'location', 'amount',
+          'contactName', 'contactPhone', 'status', 'active', 'zone',
+          'ownerUid', 'verified', 'verifiedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        nueva().category in ['medico', 'medicamentos', 'rescate', 'agua',
+          'refugio', 'transporte', 'personas', 'otro'] &&
+        nueva().description is string &&
+        nueva().description.size() > 0 && nueva().description.size() <= 140 &&
+        nueva().reference is string && nueva().reference.size() <= 120 &&
+        nueva().amount is string && nueva().amount.size() <= 60 &&
+        nueva().contactName is string &&
+        nueva().contactName.size() > 0 && nueva().contactName.size() <= 60 &&
+        nueva().contactPhone is string &&
+        nueva().contactPhone.size() >= 6 && nueva().contactPhone.size() <= 25 &&
+        validLocationOferta(nueva().location) &&
+        request.resource.data.zone in ['valle', 'cauca', 'choco', 'narino',
+          'putumayo', 'risaralda', 'quindio', 'caldas', 'tolima', 'huila',
+          'antioquia', 'cundinamarca', 'boyaca', 'santander',
+          'nortedesantander', 'atlantico', 'bolivar', 'magdalena', 'cesar',
+          'cordoba', 'sucre', 'laguajira', 'sanandres', 'meta', 'casanare',
+          'arauca', 'vichada', 'guainia', 'guaviare', 'caqueta', 'vaupes',
+          'amazonas', 'otra'] &&
+        true;
+      }
+
+      // Copia local: la de /needs vive dentro de aquel match y no llega aqui.
+      function validLocationOferta(loc) {
+        return loc == null || (
+          loc.keys().hasOnly(['lat', 'lng']) &&
+          loc.lat is number && loc.lat >= -90  && loc.lat <= 90 &&
+          loc.lng is number && loc.lng >= -180 && loc.lng <= 180
+        );
+      }
+
+      allow read: if signedIn();
+
+      allow create: if canWrite() &&
+        camposDeOferta() &&
+        nueva().ownerUid == uid() &&
+        nueva().status == 'disponible' &&
+        nueva().active == true &&
+        // Nace sin verificar y sin poder autoproclamarse verificada.
+        nueva().verified == false &&
+        nueva().verifiedByName == null &&
+        nueva().createdAt == request.time &&
+        nueva().updatedAt == request.time;
+
+      allow update: if canWrite() &&
+        camposDeOferta() &&
+        nueva().ownerUid == actual().ownerUid &&
+        nueva().createdAt == actual().createdAt &&
+        nueva().updatedAt == request.time &&
+        (
+          // El autor corrige o marca que ya se acabo. No puede verificarse solo.
+          (esAutor() &&
+           nueva().verified == actual().verified &&
+           nueva().verifiedByName == actual().verifiedByName &&
+           nueva().status in ['disponible', 'agotada'])
+          ||
+          // Un coordinador confirma que es real, o la descarta por falsa.
+          (isValidator() &&
+           nueva().status in ['disponible', 'agotada', 'falsa'])
+        );
+
+      // Nada se borra: si una oferta resulto ser una estafa, el rastro importa.
+      allow delete: if false;
+
+      // Denuncias, igual que en las necesidades: un documento por persona.
+      match /flags/{flagUid} {
+        allow read: if isValidator() || (signedIn() && uid() == flagUid);
+        allow create: if canWrite() && uid() == flagUid &&
+          request.resource.data.keys().hasOnly(['offerId', 'uid', 'reason', 'at']) &&
+          request.resource.data.offerId == offerId &&
+          request.resource.data.uid == uid() &&
+          request.resource.data.reason in
+            ['estafa', 'no-existe', 'ya-no-hay', 'datos-falsos'] &&
+          request.resource.data.at == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     // Organizaciones que aportan datos por la API.
     //
     // Nadie las lee ni las escribe desde el cliente: se dan de alta a mano con
