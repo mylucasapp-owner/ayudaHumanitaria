@@ -4,8 +4,8 @@
 
 Centraliza, verifica y geolocaliza las necesidades urgentes de los damnificados
 por desastres naturales, y las conecta con los recursos que ofrecen ciudadanos y
-empresas. También publica a dónde ir: albergues, puntos de acopio, agua, comida
-y atención médica.
+empresas. También publica a dónde ir —albergues, puntos de acopio, agua, comida
+y atención médica— y las ofertas de quien tiene algo que dar.
 
 Los datos de esos puntos son abiertos y otras plataformas pueden aportar los
 suyos ([API.md](API.md)). No para que nadie converja aquí: para que un albergue
@@ -25,6 +25,10 @@ Tres roles, un solo flujo:
 
 - **Solicitante** — 4 toques: categoría → una frase → ubicación y teléfono →
   ticket con código. El teléfono nunca aparece en el mapa público.
+- **Quien ofrece** — puede publicar lo que tiene en `/ofrezco/`, y aparece en
+  `/ofertas/` para quien lo necesite. Aquí el teléfono **sí** es público: se
+  publica para que llamen, y ponerle un peaje sería cobrárselo a quien lo
+  necesita. Ver [SEGURIDAD.md](SEGURIDAD.md) para la asimetría completa.
 - **Oferente** — lista y mapa filtrables por categoría, ordenados por
   verificación y cercanía. `YO LO CUBRO` bloquea la necesidad 3 horas mediante
   una transacción, para que dos personas no gasten recursos en lo mismo. Recién
@@ -111,7 +115,7 @@ npm run deploy
 ## Antes de desplegar
 
 ```bash
-npm run check   # tipos + reglas de React + 90 pruebas
+npm run check   # tipos + reglas de React + 95 pruebas
 npm run build && npx firebase deploy
 npm run humo    # abre las 12 pantallas en un navegador real
 ```
@@ -127,7 +131,7 @@ ninguna monta una pantalla.
 npm test
 ```
 
-Levanta los emuladores, corre las 90 pruebas y los apaga. No necesita
+Levanta los emuladores, corre las 95 pruebas y los apaga. No necesita
 dependencias extra: usa el runner de Node.
 
 Cinco capas:
@@ -173,6 +177,7 @@ Tres lugares, y ninguno más:
 scripts/validadores.mjs  acreditar, listar y revocar coordinadores
 scripts/socios.mjs       llaves para organizaciones que aportan datos
 scripts/puntos.mjs       carga albergues y acopios desde una lista de texto
+scripts/importar.mjs     trae ofertas de la API de otra plataforma
 scripts/diagnosticos.mjs fallos del cliente de las últimas horas, agrupados
 scripts/humo.mjs         abre cada pantalla en un navegador real
 ```
@@ -180,13 +185,14 @@ scripts/humo.mjs         abre cada pantalla en un navegador real
 ## Estructura
 
 ```
-app/            inicio, /necesito, /ayudar, /necesidad, /donde-ir, /mis-reportes,
-                /recuperar, /clave, /validador, /validador/puntos, /aliados, /legal
+app/            inicio, /necesito, /ayudar, /necesidad, /donde-ir, /ofertas,
+                /ofrezco, /mis-reportes, /recuperar, /clave, /validador,
+                /validador/puntos, /aliados, /como-usar, /legal
 components/     UI sin estado + mapas Leaflet (carga diferida, solo cliente)
 lib/            firebase, auth, acceso a datos, geo, tipos, diagnóstico de fallos
 public/         manifest, service worker, íconos
 functions/      ráfagas, purga de datos, recuperación, y la API pública
-tests/          90 pruebas: unitarias, recorridos, reglas, sin señal
+tests/          95 pruebas: unitarias, recorridos, reglas, sin señal
 firestore.rules modelo de permisos completo
 scripts/        ver más arriba
 ```
@@ -223,6 +229,10 @@ escribes te ayudamos con lo que ya sabemos que duele.
 Los datos de puntos son públicos y sin llave (`API.md`), y otras organizaciones
 pueden aportar los suyos. La página `/aliados/` lo explica de cara al público y
 reconoce a quien colabora.
+
+Funciona en las dos direcciones: `scripts/importar.mjs` trae las ofertas de una
+plataforma aliada y las publica con su nombre y un enlace a su ficha. Republicar
+sin decir de dónde viene convertiría un intercambio en una apropiación.
 
 Lo que **no** se abre es el detalle de las necesidades: llevan la referencia
 escrita de una persona damnificada y abrir esas direcciones en una sola petición

@@ -116,6 +116,86 @@ Function.
   real a cargo, borrarlas sería el peor error posible.
 - Los validadores están exentos: publican en volumen legítimamente.
 
+### 9. Ofertas falsas y estafas de anticipo
+
+El tablón de ofertas es el imán de fraude más obvio de toda la plataforma:
+alguien publica "tengo mercados", pide un depósito por adelantado y desaparece.
+La víctima es alguien que ya lo perdió todo.
+
+- Aviso permanente y fijo —no escondido tras un enlace— en las dos pantallas de
+  ofertas: **la ayuda no se paga, nunca**. Quien está desesperado no lee la
+  letra pequeña.
+- Ninguna oferta nace verificada y **nadie puede autoproclamarse**: el sello lo
+  pone un coordinador, y es justo lo que alguien mira antes de ir a recoger algo.
+- Denuncia por estafa desde la ficha, y descarte por coordinadores.
+- La fecha de publicación no se puede reescribir: es lo que se mira para saber
+  si todavía queda algo.
+- Nada se borra. Si una oferta resultó ser una estafa, el rastro importa.
+
+### 10. Datos falsos sobre a dónde ir
+
+Un albergue inventado manda a una familia caminando de noche, con niños y sin
+batería, a un sitio que no existe. Es un daño peor que el de una necesidad
+falsa, donde el que se mueve es un voluntario que puede darse la vuelta.
+
+- Solo los coordinadores acreditados publican puntos. La asimetría del daño
+  justifica la asimetría del permiso.
+- Un punto nace **sin confirmar** aunque lo publique un coordinador: publicar
+  desde una lista no es lo mismo que haberse parado en la puerta. Se muestra con
+  esa advertencia hasta que alguien de terreno lo confirme.
+- Quien llega puede avisar que está lleno, cerrado o que no existe. Ese aviso
+  **no cierra el punto**: si bastara con avisar, cualquiera vaciaría el mapa de
+  albergues. Lo marca para que un humano llame.
+- La carga masiva desde una lista revisa antes de publicar y, si una sola línea
+  no se entiende, no publica ninguna.
+
+## Qué es público a propósito, y qué no
+
+La asimetría es deliberada y conviene entenderla antes de tocar nada:
+
+| Dato | Quién lo ve | Por qué |
+|---|---|---|
+| Teléfono de una **necesidad** | Autor, validadores y quien gastó un cupo | Es de una persona vulnerable. Cosechar 500 de estos es el peor escenario. |
+| Teléfono de una **oferta** | Cualquiera | Quien ofrece no es vulnerable: publicó *para* que lo llamen. Ponerle un peaje sería cobrárselo a quien lo necesita. |
+| Teléfono de un **punto** | Cualquiera | Es de una institución. Llamar antes de caminar dos horas con niños es justo lo que queremos. |
+| **Coordenadas** | Cualquiera con sesión | Sin distancia, un oferente no puede decidir. Riesgo aceptado, ver abajo. |
+| **Llaves de socios** | Nadie | Se guarda solo el hash. Una filtración de esa colección no entrega permisos de escritura. |
+
+En **búsquedas de personas** el acceso al contacto no es exclusivo: se paga el
+mismo cupo, pero no bloquea. A una persona no la encuentra uno, la encuentran
+varios, y con el compromiso normal la segunda testigo —la que sabe hacia dónde
+iba— se quedaba fuera tres horas.
+
+## La API pública y su frontera
+
+`/api/puntos.geojson` y `/api/resumen.json` se sirven sin llave ni sesión, con
+caché de cinco minutos en el CDN para que mil consumidores no sean mil lecturas
+de Firestore.
+
+**Lo que deliberadamente no se abre** son los detalles de las necesidades. Una
+referencia como "Carrera 16 #3-51" junto a "insulina para mi tía que depende de
+esto" identifica a una persona vulnerable y dice qué le falta. Esta app gasta un
+cupo por cada teléfono que revela precisamente para que nadie los coseche: abrir
+las direcciones en una sola petición contradiría esa misma decisión, y el primer
+beneficiado sería quien busca a quién estafar. Solo salen agregados.
+
+`POST /api/aportarPunto` acepta datos de organizaciones con llave. Lo que
+aportan nace sin confirmar y con su nombre a la vista, y revocar la llave corta
+el acceso sin borrar lo ya aportado.
+
+## Registro de fallos
+
+`diagnostics` guarda errores del cliente para poder enterarse de que la app se
+rompió para alguien. **No se usa un servicio externo a propósito**: un payload de
+error puede arrastrar la descripción de una necesidad o un teléfono, y mandar eso
+a un tercero contradiría todo lo demás.
+
+La lista de campos es cerrada en el cliente y en las reglas, y no admite ningún
+texto escrito por una persona. La ruta se guarda sin querystring: el id de una
+necesidad no ayuda a depurar y sí serviría para reconstruir quién miró qué.
+Leerlos queda restringido a validadores, porque un user-agent identifica el
+dispositivo de alguien.
+
 ## Defensas activas en servidor
 
 | Función | Qué resuelve |
@@ -124,6 +204,8 @@ Function.
 | `purgarContactosCerrados` | Retención de datos personales, a los 30 días |
 | `reabrirEntregasSinConfirmar` | Necesidades varadas en el limbo, a las 72 h |
 | `recuperarReporte` | Devolver un reporte a quien perdió su identidad de navegador |
+| `api` | Lectura pública de puntos y agregados, con caché que acota el costo |
+| `aportarPunto` | Aportes de organizaciones aliadas, con llave y atribución |
 
 **App Check** está registrado con reCAPTCHA Enterprise y emitiendo tokens, pero
 **en modo monitoreo**: mide sin rechazar. Activar el bloqueo dejaría fuera a
@@ -142,6 +224,11 @@ tolerar algo de abuso. El criterio para activarlo está en
 2. **Límite por IP**, no solo por cuenta. Hoy la ráfaga se detecta por `uid`, y
    un atacante puede repartir sus publicaciones entre identidades nuevas.
 3. **Bloqueo de App Check activado**, cuando las métricas lo respalden.
+4. **Moderación proactiva de ofertas.** Hoy una oferta falsa se descubre porque
+   alguien la denuncia o un coordinador la revisa. Con volumen hará falta algo
+   que ordene la cola por señales, no por orden de llegada.
+5. **Caducidad de las llaves de socios.** Hoy una llave vive hasta que se
+   revoca a mano.
 
 ## Riesgos aceptados
 
@@ -153,6 +240,12 @@ tolerar algo de abuso. El criterio para activarlo está en
   30 días de cerrada la necesidad, pero la ubicación queda: es la auditoría de
   la emergencia. Si el histórico se publicara alguna vez, habría que agregarlo
   por zona en vez de exponer puntos.
+- **El teléfono de una oferta es público y se puede cosechar.** Es el precio de
+  que un damnificado pueda llamar sin fricción. Se avisa antes de publicar, y
+  quien ofrece decide con eso a la vista.
+- **Los datos de un socio llegan sin que nadie de aquí los verifique.** Entran
+  sin confirmar y con su nombre: la confianza es por fuente, decidida una vez por
+  un humano, y un coordinador puede descartarlos.
 - **El cupo estorba a operadores legítimos de volumen.** Una parroquia que
   coordina 50 entregas topará a las 8. La respuesta correcta es acreditarla como
   validadora, no subir el cupo para todos.
@@ -172,11 +265,21 @@ validadores, revisando tres veces el mismo pedido mientras otros esperan.
 
 ## Verificación
 
-`npm test` levanta 65 casos contra los emuladores, escritos como
+`npm test` levanta 95 casos contra los emuladores, escritos como
 situaciones de terreno y no como reglas abstractas. Entre ellos: que un tercero
 no vea el teléfono antes de comprometerse, que un cupo de otra necesidad no
 sirva, que el contador no se pueda saltar, que quien entrega no pueda cerrar,
 que nadie se autoproclame validador, y que una cuenta bloqueada no pueda
 publicar, comprometerse ni denunciar.
 
+También: que un anónimo no publique ni confirme un albergue, que avisar que un
+punto está lleno no lo cierre, que nadie se ponga a sí mismo el sello de oferta
+verificada, que no se pueda mover la fecha de publicación de una oferta, y que
+el acceso al contacto de una búsqueda exija haber pagado el cupo.
+
 Toda regla nueva debería llegar con su caso.
+
+Además de las reglas, `npm run lint` corta la clase de fallo que ni los tipos ni
+las pruebas ven —un hook bajo un `return` temprano tumbó todas las fichas de
+necesidad en producción— y `npm run humo` abre las catorce pantallas en un
+navegador real contra el sitio publicado.
