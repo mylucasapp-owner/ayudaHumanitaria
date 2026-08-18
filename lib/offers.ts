@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Category, GeoPoint } from "./types";
+import { CATEGORIES, type Category, type GeoPoint } from "./types";
 
 /**
  * Ofertas de ayuda: lo que alguien tiene y quiere dar.
@@ -33,6 +33,35 @@ import type { Category, GeoPoint } from "./types";
  * de la comunidad y verificación de coordinadores, igual que en las
  * necesidades.
  */
+/**
+ * Las mismas categorías, porque la dirección ya la marca dónde se publica.
+ *
+ * `personas` es el caso interesante. Como necesidad es "busco a alguien"; como
+ * oferta es "encontré a alguien", que pasa de verdad y no tenía dónde ponerse:
+ * en los datos de una plataforma aliada venía literalmente "Mascotas
+ * encontradas". Quien recoge un perro perdido o acompaña a una persona
+ * desorientada tiene algo que dar, aunque lo que dé sea una noticia.
+ *
+ * El primer intento fue quitarla de las ofertas, porque "BUSCO A ALGUIEN" entre
+ * las opciones de ofrecer no significaba nada. El problema no era la categoría
+ * sino el rótulo: lo que hacía falta era nombrarla al revés, no borrarla.
+ */
+export const OFFER_CATEGORIES = CATEGORIES;
+
+/** Rótulos en sentido inverso, para lo que se lee distinto al ofrecer. */
+export const OFFER_CATEGORY_LABEL: Partial<Record<Category, string>> = {
+  personas: "ENCONTRÉ A ALGUIEN",
+};
+
+export const OFFER_CATEGORY_SUMMARY: Partial<Record<Category, string>> = {
+  personas: "Una persona o una mascota que apareció",
+};
+
+/** Cómo se llama una categoría en el contexto de una oferta. */
+export function offerLabel(c: Category, base: string): string {
+  return OFFER_CATEGORY_LABEL[c] ?? base;
+}
+
 export const OFFER_STATUS = ["disponible", "agotada", "falsa"] as const;
 export type OfferStatus = (typeof OFFER_STATUS)[number];
 

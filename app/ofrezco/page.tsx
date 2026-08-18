@@ -9,13 +9,15 @@ import FirebaseGate from "@/components/FirebaseGate";
 import { useAuth } from "@/lib/auth";
 import { getCurrentPosition } from "@/lib/geo";
 import {
+  OFFER_CATEGORIES,
+  OFFER_CATEGORY_SUMMARY,
+  offerLabel,
   createOffer,
   MAX_OFFER_AMOUNT,
   MAX_OFFER_DESCRIPTION,
   MAX_OFFER_REFERENCE,
 } from "@/lib/offers";
 import {
-  CATEGORIES,
   CATEGORY_LABEL,
   CATEGORY_SUMMARY,
   type Category,
@@ -115,7 +117,7 @@ function OfrezcoPage() {
         <section className="stack">
           <p className="label">¿Qué puedes dar?</p>
           <div className="cats">
-            {CATEGORIES.map((c) => (
+            {OFFER_CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -123,15 +125,17 @@ function OfrezcoPage() {
                 onClick={() => setCategory(c)}
               >
                 <CategoryIcon category={c} />
-                {CATEGORY_LABEL[c]}
-                <span className="cat__hint">{CATEGORY_SUMMARY[c]}</span>
+                {offerLabel(c, CATEGORY_LABEL[c])}
+                <span className="cat__hint">
+                  {OFFER_CATEGORY_SUMMARY[c] ?? CATEGORY_SUMMARY[c]}
+                </span>
               </button>
             ))}
           </div>
         </section>
       ) : (
         <section className="stack">
-          <h2 className="title">{CATEGORY_LABEL[category]}</h2>
+          <h2 className="title">{offerLabel(category, CATEGORY_LABEL[category])}</h2>
 
           <div className="field">
             <label className="label" htmlFor="of-desc">

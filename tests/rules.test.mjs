@@ -722,3 +722,19 @@ test("ni el autor ni un coordinador pueden mover la fecha de publicacion", async
     ),
   );
 });
+
+test("encontrar a alguien tambien es una oferta", async () => {
+  const a = await anonActor("oferta-encontre");
+  // Misma categoria que "busco a alguien": la direccion la marca donde se
+  // publica. Quien recoge un perro perdido tiene algo que dar, aunque lo que
+  // de sea una noticia.
+  assert.equal(
+    await denied(() =>
+      setDoc(doc(collection(a.db, "offers")), oferta(a.uid, {
+        category: "personas",
+        description: "Encontre un perro cafe con collar rojo en el parque",
+      })),
+    ),
+    false,
+  );
+});

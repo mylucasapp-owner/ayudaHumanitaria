@@ -10,12 +10,15 @@ import { useAuth } from "@/lib/auth";
 import { distanceKm, formatAgo, formatDistance, getCurrentPosition } from "@/lib/geo";
 import {
   closeOffer,
+  OFFER_CATEGORIES,
+  OFFER_CATEGORY_SUMMARY,
+  offerLabel,
   discardOffer,
   subscribeToOffers,
   verifyOffer,
   type Offer,
 } from "@/lib/offers";
-import { CATEGORIES, CATEGORY_LABEL, type Category, type GeoPoint } from "@/lib/types";
+import { CATEGORY_LABEL, type Category, type GeoPoint } from "@/lib/types";
 import { zoneLabel } from "@/lib/zones";
 
 export default function Page() {
@@ -94,7 +97,7 @@ function OfertasPage() {
         >
           Todas
         </button>
-        {CATEGORIES.map((c) => (
+        {OFFER_CATEGORIES.map((c) => (
           <button
             key={c}
             type="button"
@@ -102,7 +105,7 @@ function OfertasPage() {
             aria-pressed={category === c}
             onClick={() => setCategory(c)}
           >
-            {CATEGORY_LABEL[c]}
+            {offerLabel(c, CATEGORY_LABEL[c])}
           </button>
         ))}
       </div>
@@ -157,7 +160,7 @@ function FichaOferta({
       <div className="row" style={{ alignItems: "flex-start" }}>
         <CategoryIcon category={offer.category} size={30} />
         <div className="grow stack" style={{ gap: 6 }}>
-          <span className="label">{CATEGORY_LABEL[offer.category]}</span>
+          <span className="label">{offerLabel(offer.category, CATEGORY_LABEL[offer.category])}</span>
           <span className="card__desc">{offer.description}</span>
           <span className="tags">
             {offer.verified && <span className="tag tag--solid">VERIFICADA</span>}

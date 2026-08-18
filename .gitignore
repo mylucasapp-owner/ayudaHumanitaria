@@ -12,3 +12,6 @@ functions/lib/
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+
+# Configuración del editor con el que se trabaja, no del proyecto.
+.claude/
