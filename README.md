@@ -1,13 +1,20 @@
 # Ayuda Humanitaria
 
-**https://ayuda-humanitaria-89e72.web.app**
+**https://ayudahumanitaria.info**
 
 Centraliza, verifica y geolocaliza las necesidades urgentes de los damnificados
 por desastres naturales, y las conecta con los recursos que ofrecen ciudadanos y
-empresas.
+empresas. También publica a dónde ir: albergues, puntos de acopio, agua, comida
+y atención médica.
 
-Para poner esto en manos de la comunidad, ver [LANZAMIENTO.md](LANZAMIENTO.md).
-Para el modelo de amenazas y las defensas, [SEGURIDAD.md](SEGURIDAD.md).
+Los datos de esos puntos son abiertos y otras plataformas pueden aportar los
+suyos ([API.md](API.md)). No para que nadie converja acá: para que un albergue
+publicado una vez aparezca en todos los mapas.
+
+Para poner esto en manos de la comunidad y la operación diaria, ver
+[LANZAMIENTO.md](LANZAMIENTO.md). Para el modelo de amenazas y las defensas,
+[SEGURIDAD.md](SEGURIDAD.md). Para integrarse desde otra plataforma,
+[API.md](API.md).
 
 PWA en Next.js (exportación estática) sobre Firebase. Sin registro para pedir ni
 para ofrecer ayuda: la identidad es anónima y automática.
@@ -24,7 +31,12 @@ Tres roles, un solo flujo:
   ahí se le revela el contacto.
 - **Validador** — coordinador acreditado (ONG, bomberos, junta de vecinos).
   Confirma que la necesidad es real, revisa denuncias, libera compromisos que no
-  se concretaron, descarta reportes falsos y bloquea cuentas abusivas.
+  se concretaron, descarta reportes falsos y bloquea cuentas abusivas. También
+  publica los puntos a donde ir y ubica en el mapa los reportes que llegaron sin
+  coordenadas.
+
+El autor puede corregir su propio reporte mientras siga abierto; al hacerlo se
+cae la verificación, porque un coordinador confirmó un texto y ese texto cambió.
 
 Un compromiso vence solo. Pasado el plazo la necesidad vuelve al feed sin que
 nadie tenga que intervenir: en una emergencia nadie va a acordarse de liberar un
@@ -96,13 +108,26 @@ npm run dev
 npm run deploy
 ```
 
+## Antes de desplegar
+
+```bash
+npm run check   # tipos + reglas de React + 90 pruebas
+npm run build && npx firebase deploy
+npm run humo    # abre las 12 pantallas en un navegador real
+```
+
+`npm run deploy` encadena `check` para que la puerta no se salte por descuido.
+Existe porque un `useState` colocado bajo un `return` temprano tumbó todas las
+fichas de necesidad en producción, y ni los tipos ni las pruebas lo veían:
+ninguna monta una pantalla.
+
 ## Pruebas
 
 ```bash
 npm test
 ```
 
-Levanta los emuladores, corre las 65 pruebas y los apaga. No necesita
+Levanta los emuladores, corre las 90 pruebas y los apaga. No necesita
 dependencias extra: usa el runner de Node.
 
 Cinco capas:
@@ -142,24 +167,34 @@ Tres lugares, y ninguno más:
 3. **`firestore.rules`** — la lista cerrada de zonas válidas, que debe coincidir
    con `lib/zones.ts`. Una prueba comprueba que no se desincronicen.
 
+## Scripts
+
+```
+scripts/validadores.mjs  acreditar, listar y revocar coordinadores
+scripts/socios.mjs       llaves para organizaciones que aportan datos
+scripts/diagnosticos.mjs fallos del cliente de las últimas horas, agrupados
+scripts/humo.mjs         abre cada pantalla en un navegador real
+```
+
 ## Estructura
 
 ```
-app/                    rutas: inicio, /necesito, /ayudar, /necesidad, /mis-reportes, /validador
-components/             UI sin estado + mapas Leaflet (carga diferida, solo cliente)
-lib/                    firebase, auth, acceso a datos, geo, tipos
-public/                 manifest, service worker, íconos
-functions/              Cloud Functions: ráfagas, purga de datos, recuperación
-tests/                  65 pruebas: unitarias, recorridos, reglas, sin señal
-firestore.rules         modelo de permisos completo
-scripts/validadores.mjs acreditar, listar y revocar coordinadores
-scripts/seed-dev.mjs    datos de prueba en emuladores (nunca toca producción)
-scripts/make-icons.mjs  regenera los PNG del logo
+app/            inicio, /necesito, /ayudar, /necesidad, /donde-ir, /mis-reportes,
+                /recuperar, /clave, /validador, /validador/puntos, /aliados, /legal
+components/     UI sin estado + mapas Leaflet (carga diferida, solo cliente)
+lib/            firebase, auth, acceso a datos, geo, tipos, diagnóstico de fallos
+public/         manifest, service worker, íconos
+functions/      ráfagas, purga de datos, recuperación, y la API pública
+tests/          90 pruebas: unitarias, recorridos, reglas, sin señal
+firestore.rules modelo de permisos completo
+scripts/        ver más arriba
 ```
 
 Firebase solo se carga en las pantallas que lo usan, no en el layout raíz. Por
-eso la portada pesa 110 kB y el resto 250 kB (gzip). Es la diferencia entre
-tocar un botón al segundo o al cuarto en una red saturada.
+eso la portada pesa unos 105 kB y las pantallas con datos unos 225 kB
+comprimidos, medido por el cable. Es la diferencia entre tocar un botón al
+segundo o al cuarto en una red saturada. Después de la primera visita lo sirve
+el service worker desde el teléfono.
 
 ## Nota: IPv6 y npm
 
