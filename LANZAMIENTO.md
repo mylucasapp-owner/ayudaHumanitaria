@@ -1,26 +1,54 @@
-# Lanzamiento
+# Poner esto en manos de una comunidad
 
-URL en producción: **https://ayudahumanitaria.info**
-(el antiguo `ayuda-humanitaria-89e72.web.app` sigue vivo y redirige al mismo sitio)
+Guía para quien va a operar una instancia: la de esta emergencia o la suya
+propia. Las instrucciones técnicas de instalación están en
+[README.md](README.md); esto es lo otro, lo que no es código y decide si la
+plataforma sirve para algo.
 
-## Lo que ya está en pie
+Está escrito con las cicatrices de un despliegue real. Cuando algo aquí parece
+excesivamente específico, casi siempre es porque ya falló.
 
-| Pieza | Estado |
+> **Los comandos usan `$PROYECTO`** como identificador de Firebase. Ponlo en tu
+> entorno una vez —`export PROYECTO=mi-proyecto`— o sustitúyelo al pegarlos.
+
+## Lo que hay que tener en pie
+
+| Pieza | Cómo se comprueba |
 |---|---|
-| App (PWA estática) | Desplegada en Firebase Hosting |
-| Base de datos | Firestore en `us-east1`, región simple |
-| Reglas de seguridad | Desplegadas y verificadas en producción |
-| Índices | Desplegados (feed, zona, ráfagas, purga, denuncias) |
-| Autenticación | Anónima y correo/contraseña habilitadas |
-| Cloud Functions | 4 desplegadas en `us-east1` |
-| Mapa | Stadia Maps, estilo oscuro, autenticado por dominio |
-| App Check | Registrado y emitiendo tokens, **en monitoreo** |
-| Recuperación de reportes | Código de 8 caracteres, canjeable desde otro teléfono |
-| Pruebas | 65 casos, todos en verde |
+| App (PWA estática) | `npm run humo` abre las catorce pantallas |
+| Firestore | Una sola región; `us-east1` en la instancia original |
+| Reglas de seguridad | `npm test` las ejerce contra los emuladores |
+| Índices | `firebase deploy --only firestore:indexes` |
+| Autenticación | Anónima **y** correo/contraseña, las dos |
+| Cloud Functions | Ráfagas, purga, reapertura, recuperación y la API |
+| Mapa | Un proveedor de teselas con tu dominio autorizado |
+| App Check | Registrado; ver más abajo por qué en monitoreo |
+| Pruebas | 96 casos, todos en verde |
+
+## Si vas a montar tu propia instancia
+
+Para otra emergencia, otro país u otro desastre. El código es MIT y no hace
+falta pedir permiso ni avisar, aunque si escribes te contamos lo que ya duele.
+
+Tres decisiones antes de tocar nada:
+
+**Las zonas.** `lib/zones.ts` trae los 32 departamentos de Colombia. Cámbialos
+por los de tu país: son un círculo por región con centro y radio, y la lista
+cerrada de `firestore.rules` debe coincidir —hay una prueba que lo comprueba.
+Sin esto, un voluntario no sabe si lo que lee le queda cerca o a 250 km.
+
+**El número de emergencias.** `lib/site.ts`, campo `emergencyNumber`. Está en la
+portada y sobre todo en el camino de RESCATE, antes del formulario: esta app no
+rescata a nadie y quien tiene un familiar atrapado debe llamar primero.
+
+**Quién acredita coordinadores.** Es la decisión más importante y no es técnica.
+Quien tenga esa llave decide qué se considera verificado y qué albergues se
+publican. Que no dependa de una sola persona: acreditar exige sesión de `gcloud`
+como dueño del proyecto, así que pon un segundo dueño desde el principio.
 
 ## Antes de difundir la URL
 
-Dos cosas que no puede hacer nadie más que tú.
+Dos cosas que no puede hacer el código por ti.
 
 ### 1. Acreditar validadores (bloqueante)
 
@@ -48,9 +76,9 @@ cualquiera del grupo podría descartar reportes reales.
 > recibir la llave del proyecto en la URL, y en proyectos configurados por API
 > esa llave llega vacía: el coordinador ve *"The selected page mode is invalid"*
 > y se queda afuera. Además esa página está en inglés. Si algún día quieres que
-> Firebase envíe el correo, hay que cambiar el *action URL* a
-> `https://ayudahumanitaria.info/clave/` desde la consola
-> (Authentication → Templates), porque por API está bloqueado.
+> Firebase envíe el correo, hay que apuntar el *action URL* a `/clave/` de tu
+> dominio desde la consola (Authentication → Templates), porque por API está
+> bloqueado.
 
 ```bash
 node scripts/validadores.mjs listar
@@ -135,7 +163,7 @@ en la siguiente carga. No hay que pedirle a nadie que borre caché.
 
 **Ver qué está haciendo el sistema.**
 ```bash
-firebase functions:log --project ayuda-humanitaria-89e72
+firebase functions:log --project $PROYECTO
 ```
 
 **Alguien perdió el acceso a su reporte.** Si conserva su código de 8
@@ -161,14 +189,23 @@ las teselas ya vistas, así que el consumo real es una fracción del tráfico.
    damnificado: quien va a recibir el teléfono de una víctima puede esperar un
    SMS; quien acaba de perder su casa, no.
 
-## Lo siguiente, por orden de valor
+## Lo que sigue faltando
 
-1. Verificación por SMS del oferente (punto 4 de arriba).
-2. Exportación para coordinación: CSV o vista imprimible por zona, porque en
-   terreno se trabaja con papel cuando no hay señal.
-3. Panel de zona para validadores, que hoy ven las tres zonas mezcladas.
-4. Mapa auto-hospedado (PMTiles) para no depender de ningún proveedor. Hoy no
-   hace falta: Stadia cubre el uso y el service worker guarda las teselas.
+Ninguna es urgente hasta que el volumen la haga urgente, y ese orden lo dicta el
+uso real, no esta lista.
+
+1. **Verificación por SMS de quien se ofrece a ayudar.** La defensa más fuerte
+   contra identidades desechables, y con una asimetría valiosa: la fricción cae
+   del lado del voluntario, no del damnificado.
+2. **Exportar por zona**, en CSV o vista imprimible. En terreno se trabaja con
+   papel cuando no hay señal.
+3. **Panel por zona para coordinadores**, que hoy ven todas mezcladas. Empieza a
+   estorbar cuando hay coordinadores en departamentos distintos.
+4. **Búsqueda por texto** en el listado. Con decenas de necesidades no hace
+   falta; con cientos, sí.
+5. **Mapa auto-hospedado** (PMTiles) para no depender de ningún proveedor. Solo
+   si el proveedor se vuelve un problema: hoy el service worker ya guarda las
+   teselas vistas.
 
 
 ## Antes de cada despliegue
@@ -195,7 +232,7 @@ nada, y `npm run humo` abre las once pantallas de verdad.
 
 Las teselas vienen de Stadia Maps y se autentican **por dominio**, no por llave:
 la URL en `.env.local` no lleva ninguna. Comprobado con `curl`: desde
-`ayuda-humanitaria-89e72.web.app` devuelven 200, y sin ese origen, 401.
+el dominio autorizado devuelven 200, y sin ese origen, 401.
 
 Tres formas de quedarse sin fondo de mapa, y ninguna avisa por correo:
 
@@ -233,8 +270,8 @@ descargan, así que no cuentan para casi nadie.
 
 1. **Alerta de facturación.** Tres minutos, y es lo único que separa una factura
    alta de una sorpresa grande.
-   https://console.cloud.google.com/billing/0178C5-E3FBB7-104BF1/budgets
-   Presupuesto sobre `ayuda-humanitaria-89e72`, 20 USD/mes, avisos al 50/90/100%.
+   Consola de Google Cloud → Facturación → Presupuestos y alertas, sobre tu
+   proyecto. Un importe que te dolería pagar, con avisos al 50/90/100%.
    **Alerta, no tope**: no conectes nada que desactive la facturación sola.
    Apagaría la plataforma a mitad de una emergencia, justo cuando el gasto
    significa que está sirviendo.
@@ -354,53 +391,58 @@ npm run check     # tipos + reglas de React + 86 pruebas
 ```
 
 
-## Estrenar el dominio propio
+## Estrenar un dominio propio
 
-`ayudahumanitaria.info`, comprado en Squarespace. **Tres cosas rompen la app al
-cambiar de dominio y ninguna avisa.** Dos ya están desactivadas; la tercera hay
-que hacerla a mano ANTES de difundir el dominio nuevo.
+Un dominio propio cambia la tasa de apertura más que casi cualquier cosa que se
+programe: un enlace `.web.app` con números aleatorios parece spam en una cadena
+de WhatsApp, y hay grupos que lo filtran.
 
-### Ya hecho (por API)
+**Tres cosas rompen la app al cambiar de dominio y ninguna avisa.** Las dos
+primeras la matan entera, no la degradan.
 
-- **Dominios autorizados de Firebase Auth.** Sin esto la sesión anónima falla y
-  nadie puede leer ni escribir nada: la app queda muerta, no degradada.
-- **Dominios de la clave reCAPTCHA (App Check).** Sin esto App Check no valida y
-  Firestore rechaza todo. Mismo resultado: muerta.
+1. **Dominios autorizados de Firebase Auth.** Sin el dominio nuevo ahí, la
+   sesión anónima falla y nadie puede leer ni escribir nada.
+2. **Dominios de la clave reCAPTCHA** que usa App Check. Sin eso no valida y
+   Firestore rechaza todo. Mismo resultado.
+3. **El proveedor de teselas**, si autentica por dominio. Aquí el mapa queda
+   gris pero la app sigue: degradada, no muerta.
 
-Ambos se añadieron sin tocar los existentes, así que el `.web.app` sigue
-funcionando igual.
-
-### También hecho
-
-- **Stadia Maps**: property nueva con `*.ayudahumanitaria.info`. Comprobado que
-  sirve teselas tanto a `www` como al dominio sin `www` —el comodín cubre los
-  dos, cosa que no se daba por supuesta.
-- **Dominio en Firebase Hosting** y sus registros en Squarespace, incluido `www`.
-  Comprobado: el apex resuelve a Firebase y `www` apunta al sitio.
-
-### Lo único que falta
-
-**El certificado.** Firebase lo emite solo y puede tardar horas. Mientras tanto,
-`http://` ya responde 301 hacia `https://`, pero `https://` no contesta: el
-dominio da error de seguridad, que en una cadena de WhatsApp es peor que no
-tener dominio. **No difundas el enlace nuevo hasta que esto pase:**
+Las dos primeras se pueden añadir por API sin tocar las existentes, así que el
+dominio viejo sigue funcionando durante la transición:
 
 ```bash
-curl -sI https://ayudahumanitaria.info | head -1
+TOKEN=$(gcloud auth print-access-token)
+
+curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -H "x-goog-user-project: $PROYECTO" \
+  "https://identitytoolkit.googleapis.com/admin/v2/projects/$PROYECTO/config?updateMask=authorizedDomains" \
+  -d '{"authorizedDomains":["'$PROYECTO'.web.app","'$PROYECTO'.firebaseapp.com","tudominio.org","www.tudominio.org"]}'
 ```
 
-Cuando devuelva `HTTP/2 200`, la comprobación completa:
+**Manda la lista completa, no solo el dominio nuevo**: ese campo se reemplaza
+entero y omitir los viejos deja fuera al `.web.app`.
+
+Después, en la consola de Firebase → Hosting → Añadir dominio personalizado (no
+se puede por CLI), los registros DNS donde compraste el dominio, y `www` como
+segundo dominio con redirección al principal.
+
+**Espera el certificado antes de difundir.** Hasta que esté, el navegador
+muestra advertencia de seguridad, y eso en una cadena de WhatsApp es peor que no
+tener dominio.
 
 ```bash
-BASE=https://ayudahumanitaria.info npm run humo
+curl -sI https://tudominio.org | head -1     # hasta que dé 200
+BASE=https://tudominio.org npm run humo      # incluye si el mapa carga
 ```
 
-### Lo que NO hay que cambiar
+### Lo que no hay que cambiar
 
-`SITE.url` se queda como está. Los enlaces que se comparten se arman con el
-dominio desde el que la persona está mirando, así que quien entre por el nuevo
-compartirá el nuevo y quien entre por el viejo compartirá el viejo. No hay día
-de corte ni ventana en la que se reparta un dominio que aún no responde.
+Los enlaces que se comparten se arman con el dominio desde el que la persona
+está mirando, así que quien entre por el nuevo comparte el nuevo y quien entre
+por el viejo comparte el viejo. No hay día de corte ni ventana en la que se
+reparta un dominio que todavía no responde.
 
-El `.web.app` seguirá vivo para siempre: las cadenas de WhatsApp que ya
-circulan no se rompen.
+`SITE.url` en `lib/site.ts` solo es el respaldo para el HTML que se genera al
+construir, donde no hay navegador. Apúntalo a tu dominio definitivo y olvídate.
+
+El `.web.app` sigue vivo para siempre: las cadenas que ya circulan no se rompen.

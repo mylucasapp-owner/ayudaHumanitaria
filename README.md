@@ -11,8 +11,8 @@ Los datos de esos puntos son abiertos y otras plataformas pueden aportar los
 suyos ([API.md](API.md)). No para que nadie converja aquí: para que un albergue
 publicado una vez aparezca en todos los mapas.
 
-Para poner esto en manos de la comunidad y la operación diaria, ver
-[LANZAMIENTO.md](LANZAMIENTO.md). Para el modelo de amenazas y las defensas,
+Para poner una instancia en manos de una comunidad —la tuya incluida— y para la
+operación diaria, ver [LANZAMIENTO.md](LANZAMIENTO.md). Para el modelo de amenazas y las defensas,
 [SEGURIDAD.md](SEGURIDAD.md). Para integrarse desde otra plataforma,
 [API.md](API.md).
 
