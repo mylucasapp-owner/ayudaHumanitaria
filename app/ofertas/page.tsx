@@ -182,7 +182,10 @@ function FichaOferta({
         <span className="grow">{offer.reference || "Sin punto de recogida"}</span>
         <span className="strong" style={{ whiteSpace: "nowrap" }}>
           {zona && <span className="tag tag--zone">{zona}</span>}
-          {typeof km === "number" ? formatDistance(km) : formatAgo(offer.createdAt)}
+          {/* Las dos, igual que en las necesidades: una oferta de hace días
+              puede estar agotada aunque nadie la haya cerrado. */}
+          {typeof km === "number" && <>{formatDistance(km)} · </>}
+          {formatAgo(offer.createdAt)}
         </span>
       </div>
 
